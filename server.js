@@ -24,7 +24,7 @@ app.post('/api/summary', async (req, res) => {
     }
 
     // Validace modelu
-    const validModels = ['gpt-3.5-turbo', 'gpt-4o-mini', 'o3-mini'];
+    const validModels = ['gpt-3.5-turbo', 'gpt-4o-mini'];
     if (!validModels.includes(model)) {
         return res.status(400).json({ error: 'Neplatný model' });
     }
@@ -52,9 +52,7 @@ app.post('/api/summary', async (req, res) => {
         const textContent = article.textContent.replace(/\s+/g, ' ').trim();
         console.log('Textový obsah článku:', textContent.slice(0, 100));
 
-        // Podle modelu použijeme správný parametr
-        const isO3Model = model === 'o3-mini';
-        const requestParams = {
+        const completion = await openai.chat.completions.create({
             model: model,
             messages: [
                 {
@@ -62,17 +60,9 @@ app.post('/api/summary', async (req, res) => {
                     content: `Napiš referát v češtině na základě následujícího textu. Referát by měl být souvislý text o délce přibližně 200 slov, shrnující hlavní myšlenky článku. Na konci přidej 2-3 citace z textu (přímé věty nebo úryvky z článku, které podporují tvé tvrzení). Pokud text není v češtině, přelož citace do češtiny. Text: ${textContent.slice(0, 4000)}`
                 }
             ],
+            max_tokens: 600,
             temperature: 0.7,
-        };
-
-        // Pro o3-mini použijeme max_completion_tokens, jinak max_tokens
-        if (isO3Model) {
-            requestParams.max_completion_tokens = 600;
-        } else {
-            requestParams.max_tokens = 600;
-        }
-
-        const completion = await openai.chat.completions.create(requestParams);
+        });
 
         console.log('Odpověď OpenAI:', completion);
 
