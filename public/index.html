@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Souhrn webové stránky</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        input {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #output {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Souhrn webové stránky</h1>
+    <input type="text" id="urlInput" placeholder="Vložte URL adresu (např. https://example.com)">
+    <button onclick="generateSummary()">Vygenerovat souhrn</button>
+    <div id="output"></div>
+
+    <script>
+        async function generateSummary() {
+            const url = document.getElementById('urlInput').value;
+            const outputDiv = document.getElementById('output');
+
+            if (!url) {
+                outputDiv.innerHTML = '<p style="color: red;">Prosím, vložte platnou URL adresu.</p>';
+                return;
+            }
+
+            outputDiv.innerHTML = '<p>Generuji souhrn, prosím čekejte...</p>';
+
+            try {
+                const response = await fetch('/api/summary', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Chyba při zpracování požadavku');
+                }
+
+                const data = await response.json();
+                outputDiv.innerHTML = `
+                    <h2>Souhrn obsahu</h2>
+                    <p>${data.summary}</p>
+                    <h3>Hlavní myšlenky</h3>
+                    <ul>${data.mainPoints.map(point => `<li>${point}</li>`).join('')}</ul>
+                `;
+            } catch (error) {
+                outputDiv.innerHTML = `<p style="color: red;">Chyba: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
