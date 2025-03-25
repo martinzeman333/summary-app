@@ -45,6 +45,7 @@ app.post('/api/summary', async (req, res) => {
             max_tokens: 500,
             temperature: 0.7,
         });
+        console.log('Odpověď OpenAI:', completion);
 
         const resultText = completion.choices[0].message.content.trim();
         const summaryMatch = resultText.match(/Souhrn:([\s\S]*?)(Hlavní myšlenky:|$)/i);
