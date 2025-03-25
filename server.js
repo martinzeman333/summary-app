@@ -1,13 +1,13 @@
 const express = require('express');
 const fetch = require('node-fetch');
-const cheerio = require('cheerio');
+const { JSDOM } = require('jsdom');
+const { Readability } = require('@mozilla/readability');
 const { OpenAI } = require('openai');
 
 const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-// Pouze jedna deklarace openai
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
@@ -29,32 +29,36 @@ app.post('/api/summary', async (req, res) => {
         console.log('Odpověď z URL:', response.status, response.statusText);
         const html = await response.text();
         console.log('HTML načteno, délka:', html.length);
-        const $ = cheerio.load(html);
-        const textContent = $('body').text().replace(/\s+/g, ' ').trim();
-        console.log('Textový obsah:', textContent.slice(0, 100));
 
-        if (!textContent) {
-            throw new Error('Nepodařilo se načíst obsah stránky');
+        // Použijeme JSDOM a Readability k extrakci hlavního obsahu
+        const dom = new JSDOM(html, { url });
+        const reader = new Readability(dom.window.document);
+        const article = reader.parse();
+
+        if (!article || !article.textContent) {
+            throw new Error('Nepodařilo se načíst obsah článku');
         }
+
+        const textContent = article.textContent.replace(/\s+/g, ' ').trim();
+        console.log('Textový obsah článku:', textContent.slice(0, 100));
 
         const completion = await openai.chat.completions.create({
             model: 'gpt-3.5-turbo',
             messages: [
-                { role: 'user', content: `Vytvoř souhrn následujícího textu v češtině a vypiš hlavní myšlenky jako seznam: ${textContent.slice(0, 4000)}` }
+                {
+                    role: 'user',
+                    content: `Napiš referát v češtině na základě následujícího textu. Referát by měl být souvislý text o délce přibližně 200 slov, shrnující hlavní myšlenky článku. Na konci přidej 2-3 citace z textu (přímé věty nebo úryvky z článku, které podporují tvé tvrzení). Text: ${textContent.slice(0, 4000)}`
+                }
             ],
-            max_tokens: 500,
+            max_tokens: 600,
             temperature: 0.7,
         });
+
         console.log('Odpověď OpenAI:', completion);
 
-        const resultText = completion.choices[0].message.content.trim();
-        const summaryMatch = resultText.match(/Souhrn:([\s\S]*?)(Hlavní myšlenky:|$)/i);
-        const pointsMatch = resultText.match(/Hlavní myšlenky:([\s\S]*)/i);
+        const referat = completion.choices[0].message.content.trim();
 
-        const summary = summaryMatch ? summaryMatch[1].trim() : resultText;
-        const mainPoints = pointsMatch ? pointsMatch[1].split('\n').filter(line => line.trim()).map(line => line.replace(/^- /, '')) : [];
-
-        res.json({ summary, mainPoints });
+        res.json({ referat });
     } catch (error) {
         console.log(error);
         res.status(500).json({ error: error.message, details: error.stack });
