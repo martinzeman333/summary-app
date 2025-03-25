@@ -24,7 +24,7 @@ app.post('/api/summary', async (req, res) => {
     }
 
     // Validace modelu
-    const validModels = ['gpt-3.5-turbo', 'gpt-4o-mini', 'o1-mini'];
+    const validModels = ['gpt-3.5-turbo', 'gpt-4o-mini', 'o3-mini'];
     if (!validModels.includes(model)) {
         return res.status(400).json({ error: 'Neplatný model' });
     }
@@ -53,7 +53,7 @@ app.post('/api/summary', async (req, res) => {
         console.log('Textový obsah článku:', textContent.slice(0, 100));
 
         // Podle modelu použijeme správný parametr
-        const isO1Model = model === 'o1-mini';
+        const isO3Model = model === 'o3-mini';
         const requestParams = {
             model: model,
             messages: [
@@ -65,8 +65,8 @@ app.post('/api/summary', async (req, res) => {
             temperature: 0.7,
         };
 
-        // Pro o1-mini použijeme max_completion_tokens, jinak max_tokens
-        if (isO1Model) {
+        // Pro o3-mini použijeme max_completion_tokens, jinak max_tokens
+        if (isO3Model) {
             requestParams.max_completion_tokens = 600;
         } else {
             requestParams.max_tokens = 600;
