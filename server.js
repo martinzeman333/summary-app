@@ -13,10 +13,20 @@ const openai = new OpenAI({
 });
 
 app.post('/api/summary', async (req, res) => {
-    const { url } = req.body;
+    const { url, model } = req.body;
 
     if (!url) {
         return res.status(400).json({ error: 'URL je povinná' });
+    }
+
+    if (!model) {
+        return res.status(400).json({ error: 'Model je povinný' });
+    }
+
+    // Validace modelu
+    const validModels = ['gpt-3.5-turbo', 'gpt-4o-mini', 'o1-mini'];
+    if (!validModels.includes(model)) {
+        return res.status(400).json({ error: 'Neplatný model' });
     }
 
     try {
@@ -43,7 +53,7 @@ app.post('/api/summary', async (req, res) => {
         console.log('Textový obsah článku:', textContent.slice(0, 100));
 
         const completion = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
+            model: model, // Použijeme vybraný model
             messages: [
                 {
                     role: 'user',
