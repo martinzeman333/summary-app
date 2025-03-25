@@ -214,7 +214,7 @@
             <select id="modelSelect">
                 <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                 <option value="gpt-4o-mini">GPT-4o Mini</option>
-                <option value="o1-mini">O1 Mini</option>
+                <option value="o3-mini">O3 Mini</option>
             </select>
             <button onclick="generateSummary()">Proveď sumarizaci článku</button>
         </div>
@@ -315,32 +315,4 @@
             document.getElementById('read-button').textContent = 'Zastavit čtení';
 
             utterance.onend = () => {
-                isReading = false;
-                document.getElementById('read-button').textContent = 'Přečti sumarizaci';
-            };
-        }
-
-        function shareSummary() {
-            const referatDiv = document.getElementById('referat');
-            const text = referatDiv.textContent;
-
-            if (!text) {
-                alert('Nejprve vygenerujte sumarizaci.');
-                return;
-            }
-
-            if (navigator.share) {
-                navigator.share({
-                    title: 'AI Sumarizace článku',
-                    text: text,
-                    url: window.location.href,
-                })
-                .then(() => console.log('Sdílení úspěšné'))
-                .catch((error) => console.log('Chyba při sdílení:', error));
-            } else {
-                alert('Sdílení není v tomto prohlížeči podporováno. Zkopírujte text ručně.');
-            }
-        }
-    </script>
-</body>
-</html>
+                isReading = false
