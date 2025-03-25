@@ -48,7 +48,8 @@ app.post('/api/summary', async (req, res) => {
 
         res.json({ summary, mainPoints });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.log(error); // Zaloguje chybu do Render logů
+        res.status(500).json({ error: error.message, details: error.stack });
     }
 });
 
