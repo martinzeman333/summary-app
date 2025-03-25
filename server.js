@@ -33,7 +33,7 @@ app.post('/api/summary', async (req, res) => {
 
         // Volání OpenAI API
         const completion = await openai.completions.create({
-            model: 'text-davinci-003',
+            model: 'gpt-3.5-turbo-instruct', // Novější model
             prompt: `Vytvoř souhrn následujícího textu v češtině a vypiš hlavní myšlenky jako seznam: ${textContent.slice(0, 4000)}`,
             max_tokens: 500,
             temperature: 0.7,
