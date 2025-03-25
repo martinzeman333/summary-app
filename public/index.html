@@ -315,4 +315,32 @@
             document.getElementById('read-button').textContent = 'Zastavit čtení';
 
             utterance.onend = () => {
-                isReading = false
+                isReading = false;
+                document.getElementById('read-button').textContent = 'Přečti sumarizaci';
+            };
+        }
+
+        function shareSummary() {
+            const referatDiv = document.getElementById('referat');
+            const text = referatDiv.textContent;
+
+            if (!text) {
+                alert('Nejprve vygenerujte sumarizaci.');
+                return;
+            }
+
+            if (navigator.share) {
+                navigator.share({
+                    title: 'AI Sumarizace článku',
+                    text: text,
+                    url: window.location.href,
+                })
+                .then(() => console.log('Sdílení úspěšné'))
+                .catch((error) => console.log('Chyba při sdílení:', error));
+            } else {
+                alert('Sdílení není v tomto prohlížeči podporováno. Zkopírujte text ručně.');
+            }
+        }
+    </script>
+</body>
+</html>
