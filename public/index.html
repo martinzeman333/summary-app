@@ -5,59 +5,145 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Summary App</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f4f4f4;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
         h1 {
             text-align: center;
-            color: #333;
+            color: #ffffff;
+            margin-bottom: 20px;
+            font-size: 2rem;
         }
+
         .container {
-            background: white;
+            background-color: #2a2a2a;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 600px;
         }
+
         input[type="text"] {
             width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background-color: #333;
+            color: #e0e0e0;
+            font-size: 1rem;
         }
+
+        input[type="text"]::placeholder {
+            color: #888;
+        }
+
         button {
             width: 100%;
-            padding: 10px;
-            background-color: #28a745;
-            color: white;
+            padding: 12px;
+            background-color: #1e90ff;
+            color: #ffffff;
             border: none;
-            border-radius: 4px;
+            border-radius: 5px;
             cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
         }
+
         button:hover {
-            background-color: #218838;
+            background-color: #1c86ee;
         }
+
         #result {
             margin-top: 20px;
         }
+
+        #result h2 {
+            color: #1e90ff;
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+        }
+
         #referat {
-            white-space: pre-wrap; /* Zachová formátování (odstavce, nové řádky) */
+            white-space: pre-wrap;
             line-height: 1.6;
-            color: #333;
+            color: #d0d0d0;
+            background-color: #333;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        /* Progress bar */
+        #progress-container {
+            display: none;
+            width: 100%;
+            background-color: #444;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 10px;
+            background-color: #1e90ff;
+            transition: width 0.1s ease;
+        }
+
+        /* Responzivní design */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .container {
+                padding: 15px;
+            }
+
+            input[type="text"],
+            button {
+                font-size: 0.9rem;
+                padding: 10px;
+            }
+
+            #result h2 {
+                font-size: 1.2rem;
+            }
+
+            #referat {
+                font-size: 0.9rem;
+                padding: 10px;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Summary App</h1>
     <div class="container">
+        <h1>Summary App</h1>
         <input type="text" id="urlInput" placeholder="Zadejte URL článku">
         <button onclick="generateSummary()">Vygenerovat souhrn</button>
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+        </div>
         <div id="result">
-            <h2>Referát:</h2>
+            <h2>AI Sumarizace článku:</h2>
             <div id="referat"></div>
         </div>
     </div>
@@ -66,11 +152,27 @@
         async function generateSummary() {
             const urlInput = document.getElementById('urlInput').value;
             const referatDiv = document.getElementById('referat');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
 
             if (!urlInput) {
                 alert('Prosím, zadejte URL.');
                 return;
             }
+
+            // Reset a zobrazení progress baru
+            referatDiv.textContent = '';
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+
+            // Simulace progress baru (postupné zvyšování)
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                if (progress <= 90) { // Až 90 %, zbytek po dokončení
+                    progressBar.style.width = `${progress}%`;
+                }
+            }, 100);
 
             try {
                 const response = await fetch('/api/summary', {
@@ -81,6 +183,9 @@
                     body: JSON.stringify({ url: urlInput }),
                 });
 
+                clearInterval(interval);
+                progressBar.style.width = '100%'; // Po dokončení 100 %
+
                 if (!response.ok) {
                     throw new Error('Chyba při zpracování požadavku');
                 }
@@ -88,8 +193,14 @@
                 const data = await response.json();
                 referatDiv.textContent = data.referat || 'Žádný referát nebyl vygenerován.';
             } catch (error) {
+                clearInterval(interval);
+                progressBar.style.width = '0%';
                 alert(error.message);
                 referatDiv.textContent = '';
+            } finally {
+                setTimeout(() => {
+                    progressContainer.style.display = 'none'; // Skryjeme progress bar po dokončení
+                }, 500);
             }
         }
     </script>
