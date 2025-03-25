@@ -215,6 +215,11 @@
                 <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                 <option value="gpt-4o-mini">GPT-4o Mini</option>
             </select>
+            <select id="lengthSelect">
+                <option value="short">Krátká (~100 slov)</option>
+                <option value="medium" selected>Střední (~200 slov)</option>
+                <option value="long">Dlouhá (~300 slov)</option>
+            </select>
             <button onclick="generateSummary()">Proveď sumarizaci článku</button>
         </div>
         <div id="progress-container">
@@ -236,6 +241,7 @@
         async function generateSummary() {
             const urlInput = document.getElementById('urlInput').value;
             const modelSelect = document.getElementById('modelSelect').value;
+            const lengthSelect = document.getElementById('lengthSelect').value;
             const referatDiv = document.getElementById('referat');
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
@@ -263,7 +269,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ url: urlInput, model: modelSelect }),
+                    body: JSON.stringify({ url: urlInput, model: modelSelect, length: lengthSelect }),
                 });
 
                 clearInterval(interval);
