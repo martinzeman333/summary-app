@@ -20,14 +20,15 @@
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start; /* Změna z center na flex-start pro lepší odsazení shora */
         }
 
         h1 {
             text-align: center;
             color: #ffffff;
-            margin-bottom: 20px;
+            margin-bottom: 30px; /* Větší odsazení dolů */
             font-size: 2rem;
+            margin-top: 20px; /* Odsazení shora */
         }
 
         .container {
@@ -97,13 +98,14 @@
             background-color: #444;
             border-radius: 5px;
             margin-bottom: 15px;
+            margin-top: 20px; /* Odsazení od tlačítka */
             overflow: hidden;
         }
 
         #progress-bar {
             width: 0%;
             height: 10px;
-            background-color: #1e90ff;
+            background-color: #2e7d32; /* Tmavě zelená barva */
             transition: width 0.1s ease;
         }
 
@@ -111,6 +113,8 @@
         @media (max-width: 600px) {
             h1 {
                 font-size: 1.5rem;
+                margin-top: 15px;
+                margin-bottom: 20px;
             }
 
             .container {
@@ -130,6 +134,10 @@
             #referat {
                 font-size: 0.9rem;
                 padding: 10px;
+            }
+
+            #progress-container {
+                margin-top: 15px;
             }
         }
     </style>
