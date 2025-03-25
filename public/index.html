@@ -334,7 +334,7 @@
             if (isReading) {
                 window.speechSynthesis.cancel();
                 isReading = false;
-                document.getElementById('read-button').textContent = 'Přečti sumarizaci';
+                document.getElementById('read-button').innerHTML = '<i class="fas fa-volume-up"></i> Přečti sumarizaci';
                 return;
             }
 
