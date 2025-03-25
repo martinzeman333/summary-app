@@ -71,6 +71,29 @@
             background-color: #1c86ee;
         }
 
+        /* Nový selektor a jeho kontejner */
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        select {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background-color: #333;
+            color: #e0e0e0;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #1e90ff;
+        }
+
         #result {
             margin-top: 20px;
         }
@@ -109,7 +132,7 @@
             transition: width 0.1s ease;
         }
 
-        /* Nová tlačítka */
+        /* Tlačítka akcí */
         .action-buttons {
             display: flex;
             gap: 10px;
@@ -151,9 +174,15 @@
             }
 
             input[type="text"],
-            button {
+            button,
+            select {
                 font-size: 0.9rem;
                 padding: 10px;
+            }
+
+            .input-group {
+                flex-direction: column;
+                gap: 8px;
             }
 
             #result h2 {
@@ -185,7 +214,14 @@
     <div class="container">
         <h1>Summary App</h1>
         <input type="text" id="urlInput" placeholder="Zadejte URL článku">
-        <button onclick="generateSummary()">Vygenerovat souhrn</button>
+        <div class="input-group">
+            <select id="modelSelect">
+                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                <option value="gpt-4o-mini">GPT-4o Mini</option>
+                <option value="o1-mini">O1 Mini</option>
+            </select>
+            <button onclick="generateSummary()">Proved sumarizaci článku</button>
+        </div>
         <div id="progress-container">
             <div id="progress-bar"></div>
         </div>
@@ -200,10 +236,11 @@
     </div>
 
     <script>
-        let isReading = false; // Proměnná pro sledování, zda se přehrává
+        let isReading = false;
 
         async function generateSummary() {
             const urlInput = document.getElementById('urlInput').value;
+            const modelSelect = document.getElementById('modelSelect').value;
             const referatDiv = document.getElementById('referat');
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
@@ -233,7 +270,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ url: urlInput }),
+                    body: JSON.stringify({ url: urlInput, model: modelSelect }),
                 });
 
                 clearInterval(interval);
@@ -266,7 +303,6 @@
                 return;
             }
 
-            // Zrušíme předchozí přehrávání, pokud běží
             if (isReading) {
                 window.speechSynthesis.cancel();
                 isReading = false;
@@ -274,19 +310,16 @@
                 return;
             }
 
-            // Vytvoříme nový SpeechSynthesisUtterance
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'cs-CZ'; // Nastavíme jazyk na češtinu
-            utterance.rate = 1.0; // Rychlost čtení
-            utterance.pitch = 1.0; // Výška hlasu
-            utterance.volume = 1.0; // Hlasitost
+            utterance.lang = 'cs-CZ';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
 
-            // Přehrajeme text
             window.speechSynthesis.speak(utterance);
             isReading = true;
             document.getElementById('read-button').textContent = 'Zastavit čtení';
 
-            // Po skončení čtení resetujeme tlačítko
             utterance.onend = () => {
                 isReading = false;
                 document.getElementById('read-button').textContent = 'Přečti sumarizaci';
