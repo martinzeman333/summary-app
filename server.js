@@ -5,7 +5,7 @@ const { OpenAI } = require('openai');
 const config = require('./config');
 
 const openai = new OpenAI({
-    apiKey: config.OPENAI_API_KEY,
+    apiKey: process.env.OPENAI_API_KEY,
 });
 console.log('OpenAI API klíč:', config.OPENAI_API_KEY); // Přidáme logování
 
