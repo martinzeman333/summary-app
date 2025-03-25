@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Summary App</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome pro ikony -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -12,11 +16,11 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #1a1a1a;
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%);
             color: #e0e0e0;
             line-height: 1.6;
-            padding: 20px;
+            padding: 30px;
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -26,66 +30,81 @@
         h1 {
             text-align: center;
             color: #ffffff;
-            margin-bottom: 30px;
-            font-size: 2rem;
-            margin-top: 20px;
+            margin-bottom: 40px;
+            font-size: 2.2rem;
+            font-weight: 600;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .container {
             background-color: #2a2a2a;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
             width: 100%;
-            max-width: 600px;
+            max-width: 650px;
+            transition: transform 0.3s ease;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
         }
 
         input[type="text"] {
             width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
+            padding: 14px;
+            margin-bottom: 20px;
             border: 1px solid #444;
-            border-radius: 5px;
+            border-radius: 8px;
             background-color: #333;
             color: #e0e0e0;
             font-size: 1rem;
+            transition: border-color 0.3s ease;
         }
 
         input[type="text"]::placeholder {
             color: #888;
         }
 
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #1e90ff;
+        }
+
         button {
             width: 100%;
-            padding: 12px;
-            background-color: #1e90ff;
+            padding: 14px;
+            background: linear-gradient(90deg, #1e90ff, #00c4ff);
             color: #ffffff;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 1rem;
-            transition: background-color 0.3s ease;
+            font-weight: 500;
+            transition: background 0.3s ease, transform 0.2s ease;
         }
 
         button:hover {
-            background-color: #1c86ee;
+            background: linear-gradient(90deg, #1c86ee, #00b7ff);
+            transform: scale(1.02);
         }
 
         .input-group {
             display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
+            gap: 12px;
+            margin-bottom: 20px;
         }
 
         select {
             flex: 1;
-            padding: 12px;
+            padding: 14px;
             border: 1px solid #444;
-            border-radius: 5px;
+            border-radius: 8px;
             background-color: #333;
             color: #e0e0e0;
             font-size: 1rem;
             cursor: pointer;
+            transition: border-color 0.3s ease;
         }
 
         select:focus {
@@ -94,114 +113,124 @@
         }
 
         #result {
-            margin-top: 20px;
+            margin-top: 25px;
         }
 
         #result h2 {
             color: #1e90ff;
-            margin-bottom: 10px;
-            font-size: 1.5rem;
+            margin-bottom: 15px;
+            font-size: 1.6rem;
+            font-weight: 500;
         }
 
         #referat {
             white-space: pre-wrap;
-            line-height: 1.6;
+            line-height: 1.7;
             color: #d0d0d0;
             background-color: #333;
-            padding: 15px;
-            border-radius: 5px;
+            padding: 20px;
+            border-radius: 10px;
             font-size: 1rem;
+            border-left: 4px solid #1e90ff;
         }
 
         #progress-container {
             display: none;
             width: 100%;
             background-color: #444;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            margin-top: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            margin-top: 25px;
             overflow: hidden;
         }
 
         #progress-bar {
             width: 0%;
-            height: 10px;
-            background-color: #2e7d32;
-            transition: width 0.1s ease;
+            height: 12px;
+            background: linear-gradient(90deg, #2e7d32, #4caf50);
+            transition: width 0.3s ease;
         }
 
         .action-buttons {
             display: flex;
-            gap: 10px;
-            margin-top: 15px;
+            gap: 12px;
+            margin-top: 20px;
         }
 
         .action-buttons button {
             flex: 1;
-            padding: 10px;
+            padding: 12px;
             font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.3s ease, transform 0.2s ease;
         }
 
         #read-button {
-            background-color: #ff9800;
+            background: linear-gradient(90deg, #ff9800, #ffb300);
         }
 
         #read-button:hover {
-            background-color: #fb8c00;
+            background: linear-gradient(90deg, #fb8c00, #ffa700);
+            transform: scale(1.02);
         }
 
         #share-button {
-            background-color: #4caf50;
+            background: linear-gradient(90deg, #4caf50, #66bb6a);
         }
 
         #share-button:hover {
-            background-color: #43a047;
+            background: linear-gradient(90deg, #43a047, #5cb860);
+            transform: scale(1.02);
         }
 
         @media (max-width: 600px) {
             h1 {
-                font-size: 1.5rem;
-                margin-top: 15px;
-                margin-bottom: 20px;
+                font-size: 1.8rem;
+                margin-top: 20px;
+                margin-bottom: 30px;
             }
 
             .container {
-                padding: 15px;
+                padding: 20px;
             }
 
             input[type="text"],
             button,
             select {
                 font-size: 0.9rem;
-                padding: 10px;
+                padding: 12px;
             }
 
             .input-group {
                 flex-direction: column;
-                gap: 8px;
+                gap: 10px;
             }
 
             #result h2 {
-                font-size: 1.2rem;
+                font-size: 1.3rem;
             }
 
             #referat {
                 font-size: 0.9rem;
-                padding: 10px;
+                padding: 15px;
             }
 
             #progress-container {
-                margin-top: 15px;
+                margin-top: 20px;
             }
 
             .action-buttons {
                 flex-direction: column;
-                gap: 8px;
+                gap: 10px;
             }
 
             .action-buttons button {
                 font-size: 0.8rem;
-                padding: 8px;
+                padding: 10px;
             }
         }
     </style>
@@ -229,8 +258,8 @@
             <h2>AI Sumarizace článku:</h2>
             <div id="referat"></div>
             <div class="action-buttons">
-                <button id="read-button" onclick="readSummary()">Přečti sumarizaci</button>
-                <button id="share-button" onclick="shareSummary()">Sdílej sumarizaci</button>
+                <button id="read-button" onclick="readSummary()"><i class="fas fa-volume-up"></i> Přečti sumarizaci</button>
+                <button id="share-button" onclick="shareSummary()"><i class="fas fa-share-alt"></i> Sdílej sumarizaci</button>
             </div>
         </div>
     </div>
@@ -317,11 +346,11 @@
 
             window.speechSynthesis.speak(utterance);
             isReading = true;
-            document.getElementById('read-button').textContent = 'Zastavit čtení';
+            document.getElementById('read-button').innerHTML = '<i class="fas fa-pause"></i> Zastavit čtení';
 
             utterance.onend = () => {
                 isReading = false;
-                document.getElementById('read-button').textContent = 'Přečti sumarizaci';
+                document.getElementById('read-button').innerHTML = '<i class="fas fa-volume-up"></i> Přečti sumarizaci';
             };
         }
 
