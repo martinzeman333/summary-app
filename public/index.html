@@ -71,7 +71,6 @@
             background-color: #1c86ee;
         }
 
-        /* Nový selektor a jeho kontejner */
         .input-group {
             display: flex;
             gap: 10px;
@@ -114,7 +113,6 @@
             font-size: 1rem;
         }
 
-        /* Progress bar */
         #progress-container {
             display: none;
             width: 100%;
@@ -132,7 +130,6 @@
             transition: width 0.1s ease;
         }
 
-        /* Tlačítka akcí */
         .action-buttons {
             display: flex;
             gap: 10px;
@@ -161,7 +158,6 @@
             background-color: #43a047;
         }
 
-        /* Responzivní design */
         @media (max-width: 600px) {
             h1 {
                 font-size: 1.5rem;
@@ -220,7 +216,7 @@
                 <option value="gpt-4o-mini">GPT-4o Mini</option>
                 <option value="o1-mini">O1 Mini</option>
             </select>
-            <button onclick="generateSummary()">Proved sumarizaci článku</button>
+            <button onclick="generateSummary()">Proveď sumarizaci článku</button>
         </div>
         <div id="progress-container">
             <div id="progress-bar"></div>
@@ -250,12 +246,10 @@
                 return;
             }
 
-            // Reset a zobrazení progress baru
             referatDiv.textContent = '';
             progressContainer.style.display = 'block';
             progressBar.style.width = '0%';
 
-            // Simulace progress baru (postupné zvyšování)
             let progress = 0;
             const interval = setInterval(() => {
                 progress += 5;
