@@ -3,53 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Souhrn webové stránky</title>
+    <title>Summary App</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             max-width: 800px;
-            margin: 20px auto;
+            margin: 0 auto;
             padding: 20px;
+            background-color: #f4f4f4;
         }
-        input {
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        input[type="text"] {
             width: 100%;
+            padding: 10px;
             margin-bottom: 10px;
-            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
         button {
-            padding: 10px 20px;
-            background-color: #007BFF;
+            width: 100%;
+            padding: 10px;
+            background-color: #28a745;
             color: white;
             border: none;
+            border-radius: 4px;
             cursor: pointer;
         }
         button:hover {
-            background-color: #0056b3;
+            background-color: #218838;
         }
-        #output {
+        #result {
             margin-top: 20px;
-            border: 1px solid #ccc;
-            padding: 15px;
+        }
+        #referat {
+            white-space: pre-wrap; /* Zachová formátování (odstavce, nové řádky) */
+            line-height: 1.6;
+            color: #333;
         }
     </style>
 </head>
 <body>
-    <h1>Souhrn webové stránky</h1>
-    <input type="text" id="urlInput" placeholder="Vložte URL adresu (např. https://example.com)">
-    <button onclick="generateSummary()">Vygenerovat souhrn</button>
-    <div id="output"></div>
+    <h1>Summary App</h1>
+    <div class="container">
+        <input type="text" id="urlInput" placeholder="Zadejte URL článku">
+        <button onclick="generateSummary()">Vygenerovat souhrn</button>
+        <div id="result">
+            <h2>Referát:</h2>
+            <div id="referat"></div>
+        </div>
+    </div>
 
     <script>
         async function generateSummary() {
-            const url = document.getElementById('urlInput').value;
-            const outputDiv = document.getElementById('output');
+            const urlInput = document.getElementById('urlInput').value;
+            const referatDiv = document.getElementById('referat');
 
-            if (!url) {
-                outputDiv.innerHTML = '<p style="color: red;">Prosím, vložte platnou URL adresu.</p>';
+            if (!urlInput) {
+                alert('Prosím, zadejte URL.');
                 return;
             }
-
-            outputDiv.innerHTML = '<p>Generuji souhrn, prosím čekejte...</p>';
 
             try {
                 const response = await fetch('/api/summary', {
@@ -57,7 +78,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ url })
+                    body: JSON.stringify({ url: urlInput }),
                 });
 
                 if (!response.ok) {
@@ -65,14 +86,10 @@
                 }
 
                 const data = await response.json();
-                outputDiv.innerHTML = `
-                    <h2>Souhrn obsahu</h2>
-                    <p>${data.summary}</p>
-                    <h3>Hlavní myšlenky</h3>
-                    <ul>${data.mainPoints.map(point => `<li>${point}</li>`).join('')}</ul>
-                `;
+                referatDiv.textContent = data.referat || 'Žádný referát nebyl vygenerován.';
             } catch (error) {
-                outputDiv.innerHTML = `<p style="color: red;">Chyba: ${error.message}</p>`;
+                alert(error.message);
+                referatDiv.textContent = '';
             }
         }
     </script>
