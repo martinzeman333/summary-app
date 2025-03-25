@@ -21,7 +21,11 @@ app.post('/api/summary', async (req, res) => {
 
     try {
         console.log('Načítám URL:', url);
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            },
+        });
         console.log('Odpověď z URL:', response.status, response.statusText);
         const html = await response.text();
         console.log('HTML načteno, délka:', html.length);
