@@ -20,15 +20,15 @@
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: flex-start; /* Změna z center na flex-start pro lepší odsazení shora */
+            align-items: flex-start;
         }
 
         h1 {
             text-align: center;
             color: #ffffff;
-            margin-bottom: 30px; /* Větší odsazení dolů */
+            margin-bottom: 30px;
             font-size: 2rem;
-            margin-top: 20px; /* Odsazení shora */
+            margin-top: 20px;
         }
 
         .container {
@@ -98,15 +98,44 @@
             background-color: #444;
             border-radius: 5px;
             margin-bottom: 15px;
-            margin-top: 20px; /* Odsazení od tlačítka */
+            margin-top: 20px;
             overflow: hidden;
         }
 
         #progress-bar {
             width: 0%;
             height: 10px;
-            background-color: #2e7d32; /* Tmavě zelená barva */
+            background-color: #2e7d32;
             transition: width 0.1s ease;
+        }
+
+        /* Nová tlačítka */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .action-buttons button {
+            flex: 1;
+            padding: 10px;
+            font-size: 0.9rem;
+        }
+
+        #read-button {
+            background-color: #ff9800;
+        }
+
+        #read-button:hover {
+            background-color: #fb8c00;
+        }
+
+        #share-button {
+            background-color: #4caf50;
+        }
+
+        #share-button:hover {
+            background-color: #43a047;
         }
 
         /* Responzivní design */
@@ -139,6 +168,16 @@
             #progress-container {
                 margin-top: 15px;
             }
+
+            .action-buttons {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .action-buttons button {
+                font-size: 0.8rem;
+                padding: 8px;
+            }
         }
     </style>
 </head>
@@ -153,10 +192,16 @@
         <div id="result">
             <h2>AI Sumarizace článku:</h2>
             <div id="referat"></div>
+            <div class="action-buttons">
+                <button id="read-button" onclick="readSummary()">Přečti sumarizaci</button>
+                <button id="share-button" onclick="shareSummary()">Sdílej sumarizaci</button>
+            </div>
         </div>
     </div>
 
     <script>
+        let isReading = false; // Proměnná pro sledování, zda se přehrává
+
         async function generateSummary() {
             const urlInput = document.getElementById('urlInput').value;
             const referatDiv = document.getElementById('referat');
@@ -177,7 +222,7 @@
             let progress = 0;
             const interval = setInterval(() => {
                 progress += 5;
-                if (progress <= 90) { // Až 90 %, zbytek po dokončení
+                if (progress <= 90) {
                     progressBar.style.width = `${progress}%`;
                 }
             }, 100);
@@ -192,7 +237,7 @@
                 });
 
                 clearInterval(interval);
-                progressBar.style.width = '100%'; // Po dokončení 100 %
+                progressBar.style.width = '100%';
 
                 if (!response.ok) {
                     throw new Error('Chyba při zpracování požadavku');
@@ -207,8 +252,66 @@
                 referatDiv.textContent = '';
             } finally {
                 setTimeout(() => {
-                    progressContainer.style.display = 'none'; // Skryjeme progress bar po dokončení
+                    progressContainer.style.display = 'none';
                 }, 500);
+            }
+        }
+
+        function readSummary() {
+            const referatDiv = document.getElementById('referat');
+            const text = referatDiv.textContent;
+
+            if (!text) {
+                alert('Nejprve vygenerujte sumarizaci.');
+                return;
+            }
+
+            // Zrušíme předchozí přehrávání, pokud běží
+            if (isReading) {
+                window.speechSynthesis.cancel();
+                isReading = false;
+                document.getElementById('read-button').textContent = 'Přečti sumarizaci';
+                return;
+            }
+
+            // Vytvoříme nový SpeechSynthesisUtterance
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'cs-CZ'; // Nastavíme jazyk na češtinu
+            utterance.rate = 1.0; // Rychlost čtení
+            utterance.pitch = 1.0; // Výška hlasu
+            utterance.volume = 1.0; // Hlasitost
+
+            // Přehrajeme text
+            window.speechSynthesis.speak(utterance);
+            isReading = true;
+            document.getElementById('read-button').textContent = 'Zastavit čtení';
+
+            // Po skončení čtení resetujeme tlačítko
+            utterance.onend = () => {
+                isReading = false;
+                document.getElementById('read-button').textContent = 'Přečti sumarizaci';
+            };
+        }
+
+        function shareSummary() {
+            const referatDiv = document.getElementById('referat');
+            const text = referatDiv.textContent;
+
+            if (!text) {
+                alert('Nejprve vygenerujte sumarizaci.');
+                return;
+            }
+
+            if (navigator.share) {
+                navigator.share({
+                    title: 'AI Sumarizace článku',
+                    text: text,
+                    url: window.location.href,
+                })
+                .then(() => console.log('Sdílení úspěšné'))
+                .catch((error) => console.log('Chyba při sdílení:', error));
+            } else {
+                alert('Sdílení není v tomto prohlížeči podporováno. Zkopírujte text ručně.');
             }
         }
     </script>
