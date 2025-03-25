@@ -2,20 +2,14 @@ const express = require('express');
 const fetch = require('node-fetch');
 const cheerio = require('cheerio');
 const { OpenAI } = require('openai');
-const config = require('./config');
-
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
-console.log('OpenAI API klíč:', config.OPENAI_API_KEY); // Přidáme logování
 
 const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-// Inicializace OpenAI s klíčem z config.js
+// Pouze jedna deklarace openai
 const openai = new OpenAI({
-    apiKey: config.OPENAI_API_KEY,
+    apiKey: process.env.OPENAI_API_KEY,
 });
 
 app.post('/api/summary', async (req, res) => {
@@ -26,7 +20,6 @@ app.post('/api/summary', async (req, res) => {
     }
 
     try {
-        // Načtení obsahu URL s logováním
         console.log('Načítám URL:', url);
         const response = await fetch(url);
         console.log('Odpověď z URL:', response.status, response.statusText);
@@ -40,9 +33,8 @@ app.post('/api/summary', async (req, res) => {
             throw new Error('Nepodařilo se načíst obsah stránky');
         }
 
-        // Volání OpenAI API
         const completion = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo', // Novější model
+            model: 'gpt-3.5-turbo',
             messages: [
                 { role: 'user', content: `Vytvoř souhrn následujícího textu v češtině a vypiš hlavní myšlenky jako seznam: ${textContent.slice(0, 4000)}` }
             ],
@@ -59,7 +51,7 @@ app.post('/api/summary', async (req, res) => {
 
         res.json({ summary, mainPoints });
     } catch (error) {
-        console.log(error); // Zaloguje chybu do Render logů
+        console.log(error);
         res.status(500).json({ error: error.message, details: error.stack });
     }
 });
