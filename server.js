@@ -52,17 +52,27 @@ app.post('/api/summary', async (req, res) => {
         const textContent = article.textContent.replace(/\s+/g, ' ').trim();
         console.log('Textový obsah článku:', textContent.slice(0, 100));
 
-        const completion = await openai.chat.completions.create({
-            model: model, // Použijeme vybraný model
+        // Podle modelu použijeme správný parametr
+        const isO1Model = model === 'o1-mini';
+        const requestParams = {
+            model: model,
             messages: [
                 {
                     role: 'user',
                     content: `Napiš referát v češtině na základě následujícího textu. Referát by měl být souvislý text o délce přibližně 200 slov, shrnující hlavní myšlenky článku. Na konci přidej 2-3 citace z textu (přímé věty nebo úryvky z článku, které podporují tvé tvrzení). Pokud text není v češtině, přelož citace do češtiny. Text: ${textContent.slice(0, 4000)}`
                 }
             ],
-            max_tokens: 600,
             temperature: 0.7,
-        });
+        };
+
+        // Pro o1-mini použijeme max_completion_tokens, jinak max_tokens
+        if (isO1Model) {
+            requestParams.max_completion_tokens = 600;
+        } else {
+            requestParams.max_tokens = 600;
+        }
+
+        const completion = await openai.chat.completions.create(requestParams);
 
         console.log('Odpověď OpenAI:', completion);
 
