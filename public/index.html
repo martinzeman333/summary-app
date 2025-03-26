@@ -95,6 +95,42 @@
             margin-bottom: 20px;
         }
 
+        .news-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .news-buttons button {
+            flex: 1;
+            padding: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        #news-cr-button {
+            background: linear-gradient(90deg, #d32f2f, #f44336);
+        }
+
+        #news-cr-button:hover {
+            background: linear-gradient(90deg, #c62828, #e53935);
+            transform: scale(1.02);
+        }
+
+        #news-world-button {
+            background: linear-gradient(90deg, #1976d2, #2196f3);
+        }
+
+        #news-world-button:hover {
+            background: linear-gradient(90deg, #1565c0, #1e88e5);
+            transform: scale(1.02);
+        }
+
         select {
             flex: 1;
             padding: 14px;
@@ -110,6 +146,37 @@
         select:focus {
             outline: none;
             border-color: #1e90ff;
+        }
+
+        .voice-settings {
+            display: flex;
+            gap: 12px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+
+        .voice-settings label {
+            color: #d0d0d0;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .voice-settings select,
+        .voice-settings input[type="range"] {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #333;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .voice-settings input[type="range"] {
+            padding: 0;
         }
 
         #result {
@@ -205,7 +272,13 @@
                 padding: 12px;
             }
 
-            .input-group {
+            .input-group,
+            .news-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .voice-settings {
                 flex-direction: column;
                 gap: 10px;
             }
@@ -251,12 +324,24 @@
             </select>
             <button onclick="generateSummary()">Proveď sumarizaci článku</button>
         </div>
+        <div class="news-buttons">
+            <button id="news-cr-button" onclick="summarizeCRNews()"><i class="fas fa-newspaper"></i> Novinky ČR</button>
+            <button id="news-world-button" onclick="summarizeWorldNews()"><i class="fas fa-globe"></i> Novinky Svět</button>
+        </div>
         <div id="progress-container">
             <div id="progress-bar"></div>
         </div>
         <div id="result">
-            <h2>AI Sumarizace článku:</h2>
+            <h2>AI Sumarizace:</h2>
             <div id="referat"></div>
+            <div class="voice-settings">
+                <label for="voiceSelect">Hlas:</label>
+                <select id="voiceSelect"></select>
+                <label for="rate">Rychlost: <span id="rateValue">1.0</span></label>
+                <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1.0">
+                <label for="pitch">Výška tónu: <span id="pitchValue">1.0</span></label>
+                <input type="range" id="pitch" min="0.5" max="2" step="0.1" value="1.0">
+            </div>
             <div class="action-buttons">
                 <button id="read-button" onclick="readSummary()"><i class="fas fa-volume-up"></i> Přečti sumarizaci</button>
                 <button id="share-button" onclick="shareSummary()"><i class="fas fa-share-alt"></i> Sdílej sumarizaci</button>
@@ -266,6 +351,35 @@
 
     <script>
         let isReading = false;
+        let voices = [];
+
+        // Načtení dostupných hlasů
+        function loadVoices() {
+            voices = window.speechSynthesis.getVoices();
+            const voiceSelect = document.getElementById('voiceSelect');
+            voiceSelect.innerHTML = '';
+            voices.forEach((voice, index) => {
+                if (voice.lang === 'cs-CZ') { // Filtrovat pouze české hlasy
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    voiceSelect.appendChild(option);
+                }
+            });
+        }
+
+        // Načtení hlasů při startu a při změně dostupných hlasů
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        loadVoices();
+
+        // Aktualizace zobrazení hodnot rychlosti a výšky tónu
+        document.getElementById('rate').addEventListener('input', function() {
+            document.getElementById('rateValue').textContent = this.value;
+        });
+
+        document.getElementById('pitch').addEventListener('input', function() {
+            document.getElementById('pitchValue').textContent = this.value;
+        });
 
         async function generateSummary() {
             const urlInput = document.getElementById('urlInput').value;
@@ -322,6 +436,114 @@
             }
         }
 
+        async function summarizeCRNews() {
+            const urls = [
+                'https://www.irozhlas.cz/zpravy-domov',
+                'https://www.seznamzpravy.cz/sekce/domaci-13',
+                'https://ct24.ceskatelevize.cz/rubrika/domaci-5'
+            ];
+            const model = 'gpt-4o-mini';
+            const length = 'long'; // Použijeme "long", ale upravíme délku na 3000 slov na serveru
+            const referatDiv = document.getElementById('referat');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+
+            referatDiv.textContent = '';
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                if (progress <= 90) {
+                    progressBar.style.width = `${progress}%`;
+                }
+            }, 100);
+
+            try {
+                const response = await fetch('/api/summarize-news', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ urls, model, length, type: 'cr' }),
+                });
+
+                clearInterval(interval);
+                progressBar.style.width = '100%';
+
+                if (!response.ok) {
+                    throw new Error('Chyba při zpracování požadavku');
+                }
+
+                const data = await response.json();
+                referatDiv.textContent = data.referat || 'Žádný referát nebyl vygenerován.';
+            } catch (error) {
+                clearInterval(interval);
+                progressBar.style.width = '0%';
+                alert(error.message);
+                referatDiv.textContent = '';
+            } finally {
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                }, 500);
+            }
+        }
+
+        async function summarizeWorldNews() {
+            const urls = [
+                'https://ct24.ceskatelevize.cz/rubrika/svet-16',
+                'https://www.irozhlas.cz/zpravy-svet',
+                'https://www.seznamzpravy.cz/sekce/zahranicni-11'
+            ];
+            const model = 'gpt-4o-mini';
+            const length = 'long'; // Použijeme "long", ale upravíme délku na 3000 slov na serveru
+            const referatDiv = document.getElementById('referat');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+
+            referatDiv.textContent = '';
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                if (progress <= 90) {
+                    progressBar.style.width = `${progress}%`;
+                }
+            }, 100);
+
+            try {
+                const response = await fetch('/api/summarize-news', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ urls, model, length, type: 'world' }),
+                });
+
+                clearInterval(interval);
+                progressBar.style.width = '100%';
+
+                if (!response.ok) {
+                    throw new Error('Chyba při zpracování požadavku');
+                }
+
+                const data = await response.json();
+                referatDiv.textContent = data.referat || 'Žádný referát nebyl vygenerován.';
+            } catch (error) {
+                clearInterval(interval);
+                progressBar.style.width = '0%';
+                alert(error.message);
+                referatDiv.textContent = '';
+            } finally {
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                }, 500);
+            }
+        }
+
         function readSummary() {
             const referatDiv = document.getElementById('referat');
             const text = referatDiv.textContent;
@@ -339,9 +561,14 @@
             }
 
             const utterance = new SpeechSynthesisUtterance(text);
+            const voiceSelect = document.getElementById('voiceSelect');
+            const selectedVoice = voices[voiceSelect.value];
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            }
             utterance.lang = 'cs-CZ';
-            utterance.rate = 1.0;
-            utterance.pitch = 1.0;
+            utterance.rate = parseFloat(document.getElementById('rate').value);
+            utterance.pitch = parseFloat(document.getElementById('pitch').value);
             utterance.volume = 1.0;
 
             window.speechSynthesis.speak(utterance);
@@ -365,7 +592,7 @@
 
             if (navigator.share) {
                 navigator.share({
-                    title: 'AI Sumarizace článku',
+                    title: 'AI Sumarizace',
                     text: text,
                     url: window.location.href,
                 })
