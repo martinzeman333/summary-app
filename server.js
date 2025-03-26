@@ -112,8 +112,10 @@ app.post('/api/summarize-news', async (req, res) => {
     const maxTokens = Math.round(wordCount * 1.5);
 
     try {
-        // Načteme obsah ze všech URL
+        // Načteme obsah ze všech URL a extrahujeme odkazy na jednotlivé články
         const articles = [];
+        const articleLinks = new Map(); // Mapa pro uchování odkazů na články
+
         for (const url of urls) {
             const response = await fetch(url, {
                 headers: {
@@ -128,13 +130,53 @@ app.post('/api/summarize-news', async (req, res) => {
 
             const html = await response.text();
             const dom = new JSDOM(html, { url });
-            const reader = new Readability(dom.window.document);
-            const article = reader.parse();
+            const document = dom.window.document;
 
-            if (article && article.textContent) {
-                articles.push({ url, content: article.textContent, title: article.title || 'Bez názvu' });
-            } else {
-                console.error(`Nepodařilo se extrahovat obsah z ${url}`);
+            // Extrahujeme odkazy na články z homepage
+            const links = Array.from(document.querySelectorAll('a'))
+                .map(a => {
+                    const href = a.href;
+                    // Filtrujeme pouze odkazy, které pravděpodobně vedou na články (např. obsahují titulek a nejsou na jiné sekce)
+                    if (href && href.startsWith('http') && !href.includes('category') && !href.includes('tag') && !href.includes('author')) {
+                        return href;
+                    }
+                    return null;
+                })
+                .filter(link => link !== null);
+
+            // Načteme obsah jednotlivých článků
+            for (const articleUrl of links.slice(0, 10)) { // Omezíme na 10 článků, aby to nebylo příliš náročné
+                try {
+                    const articleResponse = await fetch(articleUrl, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                        },
+                    });
+
+                    if (!articleResponse.ok) {
+                        console.error(`Nepodařilo se načíst článek ${articleUrl}: ${articleResponse.statusText}`);
+                        continue;
+                    }
+
+                    const articleHtml = await articleResponse.text();
+                    const articleDom = new JSDOM(articleHtml, { url: articleUrl });
+                    const reader = new Readability(articleDom.window.document);
+                    const article = reader.parse();
+
+                    if (article && article.textContent) {
+                        articles.push({
+                            url: articleUrl,
+                            content: article.textContent,
+                            title: article.title || 'Bez názvu'
+                        });
+                        // Uložíme odkaz na článek pro pozdější použití
+                        articleLinks.set(article.textContent.slice(0, 100),那么, articleLinks.set(article.title, article.title.slice(0, 100));
+                    } else {
+                        console.error(`Nepodařilo se extrahovat obsah z ${articleUrl}`);
+                    }
+                } catch (err) {
+                    console.error(`Chyba při načítání článku ${articleUrl}: ${err.message}`);
+                }
             }
         }
 
@@ -160,8 +202,8 @@ app.post('/api/summarize-news', async (req, res) => {
         // Vytvoříme prompt pro OpenAI
         const prompt = `Prohledej následující texty z více zdrojů a vytvoř seznam ${summaryDescription}. Pro každou zprávu uveď:
         - Krátký titulek (max. 10 slov),
-        - Stručné shrnutí (2-3 věty, zdůrazni podstatné informace, přelož do češtiny, pokud je text v jiném jazyce),
-        - Odkaz na původní článek (URL).
+        - Podrobné shrnutí (4-5 vět, zdůrazni podstatné informace, přelož do češtiny, pokud je text v jiném jazyce),
+        - Odkaz na původní článek jako holé URL (např. https://example.com/article, bez Markdown formátu [text](url)).
         Seznam by měl obsahovat 5-10 nejzajímavějších zpráv, celkově o délce přibližně ${wordCount} slov. Nepoužívej nadpisy jako ### Závěr nebo ### Citace. Texty: ${combinedContent.slice(0, 8000)}`;
 
         const completion = await openai.chat.completions.create({
@@ -176,7 +218,11 @@ app.post('/api/summarize-news', async (req, res) => {
             temperature: 0.7,
         });
 
-        const referat = completion.choices[0].message.content.trim();
+        let referat = completion.choices[0].message.content.trim();
+
+        // Nahradíme Markdown odkazy (např. [Odkaz na původní článek](url)) na holé URL
+        referat = referat.replace(/\[.*?\]\((https?:\/\/[^\s]+)\)/g, '$1');
+
         res.json({ referat });
     } catch (error) {
         res.status(500).json({ error: error.message });
