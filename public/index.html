@@ -371,19 +371,6 @@
 <body>
     <div class="container">
         <h1>Summary App</h1>
-        <div class="homepage-selector">
-            <select id="homepageSelect">
-                <option value="https://www.nytimes.com/international/">New York Times</option>
-                <option value="https://www.wsj.com/">Wall Street Journal</option>
-                <option value="https://edition.cnn.com/">CNN</option>
-                <option value="https://www.bbc.com/">BBC</option>
-                <option value="https://www.welt.de/">Die Welt</option>
-                <option value="https://www.chinadaily.com.cn/">China Daily</option>
-                <option value="https://www.aljazeera.com/">Al Jazeera</option>
-                <option value="https://tass.com/">Tass</option>
-            </select>
-            <button onclick="summarizeHomepage()"><i class="fas fa-globe"></i> Sumarizuj homepage</button>
-        </div>
         <input type="text" id="urlInput" placeholder="Zadejte URL článku">
         <div class="input-group">
             <select id="modelSelect">
@@ -400,6 +387,19 @@
         <div class="news-buttons">
             <button id="news-cr-button" onclick="summarizeCRNews()"><i class="fas fa-newspaper"></i> Novinky ČR</button>
             <button id="news-world-button" onclick="summarizeWorldNews()"><i class="fas fa-globe"></i> Novinky Svět</button>
+        </div>
+        <div class="homepage-selector">
+            <select id="homepageSelect">
+                <option value="https://www.nytimes.com/international/">New York Times</option>
+                <option value="https://www.wsj.com/">Wall Street Journal</option>
+                <option value="https://edition.cnn.com/">CNN</option>
+                <option value="https://www.bbc.com/">BBC</option>
+                <option value="https://www.welt.de/">Die Welt</option>
+                <option value="https://www.chinadaily.com.cn/">China Daily</option>
+                <option value="https://www.aljazeera.com/">Al Jazeera</option>
+                <option value="https://tass.com/">Tass</option>
+            </select>
+            <button onclick="summarizeHomepage()"><i class="fas fa-globe"></i> Sumarizuj homepage</button>
         </div>
         <div id="progress-container">
             <div id="progress-bar"></div>
