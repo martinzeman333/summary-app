@@ -34,13 +34,13 @@ app.post('/api/summary', async (req, res) => {
     }
 
     const lengthMap = {
-        short: 100,
-        medium: 200,
-        long: 300,
+        short: 300,  // Změněno z 100 na 300 slov
+        medium: 600, // Změněno z 200 na 600 slov
+        long: 1000,  // Změněno z 300 na 1000 slov
     };
 
-    const wordCount = lengthMap[length] || 200;
-    const maxTokens = Math.round(wordCount * 1.5);
+    const wordCount = lengthMap[length] || 600; // Výchozí hodnota je nyní 600 slov (střední)
+    const maxTokens = Math.round(wordCount * 1.5); // Přepočítáme maxTokens podle nové délky
 
     try {
         const response = await fetch(url, {
