@@ -132,7 +132,7 @@ app.post('/api/summarize-news', async (req, res) => {
             const article = reader.parse();
 
             if (article && article.textContent) {
-                articles.push({ url, content: article.textContent });
+                articles.push({ url, content: article.textContent, title: article.title || 'Bez názvu' });
             } else {
                 console.error(`Nepodařilo se extrahovat obsah z ${url}`);
             }
@@ -143,15 +143,19 @@ app.post('/api/summarize-news', async (req, res) => {
         }
 
         // Spojíme obsah všech článků do jednoho textu
-        const combinedContent = articles.map(article => `Obsah z ${article.url}:\n${article.content}`).join('\n\n');
+        const combinedContent = articles.map(article => `Obsah z ${article.url} (Titulek: ${article.title}):\n${article.content}`).join('\n\n');
 
         // Definujeme popis sumarizace podle typu
         const summaryDescription = type === 'cr'
-            ? 'hlavních novinek z České republiky'
-            : 'hlavních novinek ze světa';
+            ? 'nejnovějších a nejzajímavějších zpráv z České republiky'
+            : 'nejnovějších a nejzajímavějších zpráv ze světa';
 
         // Vytvoříme prompt pro OpenAI
-        const prompt = `Napiš referát v češtině na základě následujících textů z více zdrojů. Referát by měl být souvislý text o délce přibližně ${wordCount} slov, shrnující ${summaryDescription}. Zaměř se na nejdůležitější události, trendy a informace. Na konci přidej 2-3 citace z textů (přímé věty nebo úryvky, které podporují tvé tvrzení). Pokud text není v češtině, přelož citace do češtiny. Texty: ${combinedContent.slice(0, 8000)}`;
+        const prompt = `Prohledej následující texty z více zdrojů a vytvoř seznam ${summaryDescription}. Pro každou zprávu uveď:
+        - Krátký titulek (max. 10 slov),
+        - Stručné shrnutí (2-3 věty, zdůrazni podstatné informace),
+        - Odkaz na původní článek (URL).
+        Seznam by měl obsahovat 5-10 nejzajímavějších zpráv, celkově o délce přibližně ${wordCount} slov. Nepoužívej nadpisy jako ### Závěr nebo ### Citace. Texty: ${combinedContent.slice(0, 8000)}`;
 
         const completion = await openai.chat.completions.create({
             model: model,
