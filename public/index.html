@@ -95,6 +95,45 @@
             margin-bottom: 20px;
         }
 
+        .homepage-selector {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .homepage-selector select {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #333;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .homepage-selector select:focus {
+            outline: none;
+            border-color: #1e90ff;
+        }
+
+        .homepage-selector button {
+            flex: 1;
+            padding: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: linear-gradient(90deg, #388e3c, #4caf50);
+        }
+
+        .homepage-selector button:hover {
+            background: linear-gradient(90deg, #2e7d32, #43a047);
+            transform: scale(1.02);
+        }
+
         .news-buttons {
             display: flex;
             gap: 12px;
@@ -150,31 +189,31 @@
 
         .voice-settings {
             display: flex;
-            flex-wrap: wrap; /* Prvky se zalomí na nový řádek, pokud je šířka malá */
-            gap: 12px;
-            margin-top: 10px;
-            margin-bottom: 20px;
+            gap: 8px; /* Menší mezera mezi prvky */
+            margin-top: 8px;
+            margin-bottom: 15px;
+            align-items: center; /* Vertikální zarovnání prvků */
         }
 
         .voice-settings label {
             color: #d0d0d0;
-            font-size: 0.9rem;
+            font-size: 0.8rem; /* Menší písmo */
             display: flex;
             align-items: center;
-            gap: 5px;
-            flex: 1 1 100%; /* Label zabere celou šířku na menších obrazovkách */
+            gap: 4px;
+            white-space: nowrap; /* Zabrání zalomení textu v labelu */
         }
 
         .voice-settings select,
         .voice-settings input[type="range"] {
-            flex: 1 1 200px; /* Minimální šířka 200px, ale prvek se může zvětšit */
-            max-width: 300px; /* Maximální šířka, aby nepřesahoval */
-            padding: 8px;
+            flex: 0 1 120px; /* Menší základní šířka */
+            max-width: 150px; /* Menší maximální šířka */
+            padding: 5px; /* Menší padding */
             border: 1px solid #444;
-            border-radius: 8px;
+            border-radius: 6px; /* Menší zaoblení */
             background-color: #333;
             color: #e0e0e0;
-            font-size: 0.9rem;
+            font-size: 0.8rem; /* Menší písmo */
             cursor: pointer;
         }
 
@@ -202,6 +241,16 @@
             border-radius: 10px;
             font-size: 1rem;
             border-left: 4px solid #1e90ff;
+        }
+
+        #referat a {
+            color: #1e90ff;
+            text-decoration: underline;
+            transition: color 0.3s ease;
+        }
+
+        #referat a:hover {
+            color: #00c4ff;
         }
 
         #progress-container {
@@ -276,6 +325,7 @@
             }
 
             .input-group,
+            .homepage-selector,
             .news-buttons {
                 flex-direction: column;
                 gap: 10px;
@@ -283,7 +333,13 @@
 
             .voice-settings {
                 flex-direction: column;
-                gap: 10px;
+                gap: 8px;
+            }
+
+            .voice-settings select,
+            .voice-settings input[type="range"] {
+                flex: 1 1 100%; /* Na mobilu zabere celou šířku */
+                max-width: 100%;
             }
 
             #result h2 {
@@ -314,6 +370,19 @@
 <body>
     <div class="container">
         <h1>Summary App</h1>
+        <div class="homepage-selector">
+            <select id="homepageSelect">
+                <option value="https://www.nytimes.com/international/">New York Times</option>
+                <option value="https://www.wsj.com/">Wall Street Journal</option>
+                <option value="https://edition.cnn.com/">CNN</option>
+                <option value="https://www.bbc.com/">BBC</option>
+                <option value="https://www.welt.de/">Die Welt</option>
+                <option value="https://www.chinadaily.com.cn/">China Daily</option>
+                <option value="https://www.aljazeera.com/">Al Jazeera</option>
+                <option value="https://tass.com/">Tass</option>
+            </select>
+            <button onclick="summarizeHomepage()"><i class="fas fa-globe"></i> Sumarizuj homepage</button>
+        </div>
         <input type="text" id="urlInput" placeholder="Zadejte URL článku">
         <div class="input-group">
             <select id="modelSelect">
@@ -384,6 +453,12 @@
             document.getElementById('pitchValue').textContent = this.value;
         });
 
+        // Funkce pro převod URL na klikací odkazy
+        function makeLinksClickable(text) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            return text.replace(urlRegex, '<a href="$1" target="_blank">$1</a>');
+        }
+
         async function generateSummary() {
             const urlInput = document.getElementById('urlInput').value;
             const modelSelect = document.getElementById('modelSelect').value;
@@ -397,7 +472,7 @@
                 return;
             }
 
-            referatDiv.textContent = '';
+            referatDiv.innerHTML = '';
             progressContainer.style.display = 'block';
             progressBar.style.width = '0%';
 
@@ -426,12 +501,63 @@
                 }
 
                 const data = await response.json();
-                referatDiv.textContent = data.referat || 'Žádný referát nebyl vygenerován.';
+                referatDiv.innerHTML = makeLinksClickable(data.referat || 'Žádný referát nebyl vygenerován.');
             } catch (error) {
                 clearInterval(interval);
                 progressBar.style.width = '0%';
                 alert(error.message);
-                referatDiv.textContent = '';
+                referatDiv.innerHTML = '';
+            } finally {
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                }, 500);
+            }
+        }
+
+        async function summarizeHomepage() {
+            const homepageSelect = document.getElementById('homepageSelect').value;
+            const urls = [homepageSelect];
+            const model = 'gpt-4o-mini';
+            const length = 'long'; // Použijeme "long", ale upravíme délku na 3000 slov na serveru
+            const referatDiv = document.getElementById('referat');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+
+            referatDiv.innerHTML = '';
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                if (progress <= 90) {
+                    progressBar.style.width = `${progress}%`;
+                }
+            }, 100);
+
+            try {
+                const response = await fetch('/api/summarize-news', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ urls, model, length, type: 'homepage' }),
+                });
+
+                clearInterval(interval);
+                progressBar.style.width = '100%';
+
+                if (!response.ok) {
+                    throw new Error('Chyba při zpracování požadavku');
+                }
+
+                const data = await response.json();
+                referatDiv.innerHTML = makeLinksClickable(data.referat || 'Žádný referát nebyl vygenerován.');
+            } catch (error) {
+                clearInterval(interval);
+                progressBar.style.width = '0%';
+                alert(error.message);
+                referatDiv.innerHTML = '';
             } finally {
                 setTimeout(() => {
                     progressContainer.style.display = 'none';
@@ -451,7 +577,7 @@
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
 
-            referatDiv.textContent = '';
+            referatDiv.innerHTML = '';
             progressContainer.style.display = 'block';
             progressBar.style.width = '0%';
 
@@ -480,12 +606,12 @@
                 }
 
                 const data = await response.json();
-                referatDiv.textContent = data.referat || 'Žádný referát nebyl vygenerován.';
+                referatDiv.innerHTML = makeLinksClickable(data.referat || 'Žádný referát nebyl vygenerován.');
             } catch (error) {
                 clearInterval(interval);
                 progressBar.style.width = '0%';
                 alert(error.message);
-                referatDiv.textContent = '';
+                referatDiv.innerHTML = '';
             } finally {
                 setTimeout(() => {
                     progressContainer.style.display = 'none';
@@ -505,7 +631,7 @@
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
 
-            referatDiv.textContent = '';
+            referatDiv.innerHTML = '';
             progressContainer.style.display = 'block';
             progressBar.style.width = '0%';
 
@@ -534,12 +660,12 @@
                 }
 
                 const data = await response.json();
-                referatDiv.textContent = data.referat || 'Žádný referát nebyl vygenerován.';
+                referatDiv.innerHTML = makeLinksClickable(data.referat || 'Žádný referát nebyl vygenerován.');
             } catch (error) {
                 clearInterval(interval);
                 progressBar.style.width = '0%';
                 alert(error.message);
-                referatDiv.textContent = '';
+                referatDiv.innerHTML = '';
             } finally {
                 setTimeout(() => {
                     progressContainer.style.display = 'none';
