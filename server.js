@@ -3,6 +3,7 @@ const fetch = require('node-fetch');
 const { JSDOM } = require('jsdom');
 const { Readability } = require('@mozilla/readability');
 const { OpenAI } = require('openai');
+require('dotenv').config();
 
 const app = express();
 app.use(express.json());
@@ -32,53 +33,36 @@ app.post('/api/summary', async (req, res) => {
         return res.status(400).json({ error: 'Neplatný model' });
     }
 
-    const validLengths = ['short', 'medium', 'long'];
-    if (!validLengths.includes(length)) {
-        return res.status(400).json({ error: 'Neplatná délka' });
-    }
+    const lengthMap = {
+        short: 100,
+        medium: 200,
+        long: 300,
+    };
+
+    const wordCount = lengthMap[length] || 200;
+    const maxTokens = Math.round(wordCount * 1.5);
 
     try {
-        console.log('Načítám URL:', url);
         const response = await fetch(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             },
         });
-        console.log('Odpověď z URL:', response.status, response.statusText);
-        const html = await response.text();
-        console.log('HTML načteno, délka:', html.length);
 
+        if (!response.ok) {
+            throw new Error(`Nepodařilo se načíst stránku: ${response.statusText}`);
+        }
+
+        const html = await response.text();
         const dom = new JSDOM(html, { url });
         const reader = new Readability(dom.window.document);
         const article = reader.parse();
 
         if (!article || !article.textContent) {
-            throw new Error('Nepodařilo se načíst obsah článku');
+            throw new Error('Nepodařilo se extrahovat obsah článku');
         }
 
-        const textContent = article.textContent.replace(/\s+/g, ' ').trim();
-        console.log('Textový obsah článku:', textContent.slice(0, 100));
-
-        // Nastavení délky podle výběru
-        let wordCount;
-        let maxTokens;
-        switch (length) {
-            case 'short':
-                wordCount = 100;
-                maxTokens = 300;
-                break;
-            case 'medium':
-                wordCount = 200;
-                maxTokens = 600;
-                break;
-            case 'long':
-                wordCount = 300;
-                maxTokens = 900;
-                break;
-            default:
-                wordCount = 200;
-                maxTokens = 600;
-        }
+        const textContent = article.textContent;
 
         const completion = await openai.chat.completions.create({
             model: model,
@@ -92,14 +76,99 @@ app.post('/api/summary', async (req, res) => {
             temperature: 0.7,
         });
 
-        console.log('Odpověď OpenAI:', completion);
-
         const referat = completion.choices[0].message.content.trim();
-
         res.json({ referat });
     } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: error.message, details: error.stack });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/summarize-news', async (req, res) => {
+    const { urls, model, length, type } = req.body;
+
+    if (!urls || !Array.isArray(urls) || urls.length === 0) {
+        return res.status(400).json({ error: 'Seznam URL je povinný' });
+    }
+
+    if (!model) {
+        return res.status(400).json({ error: 'Model je povinný' });
+    }
+
+    if (!length) {
+        return res.status(400).json({ error: 'Délka je povinná' });
+    }
+
+    if (!type) {
+        return res.status(400).json({ error: 'Typ sumarizace je povinný' });
+    }
+
+    const validModels = ['gpt-3.5-turbo', 'gpt-4o-mini'];
+    if (!validModels.includes(model)) {
+        return res.status(400).json({ error: 'Neplatný model' });
+    }
+
+    // Pro speciální sumarizaci novinek nastavíme délku na 3000 slov
+    const wordCount = 3000;
+    const maxTokens = Math.round(wordCount * 1.5);
+
+    try {
+        // Načteme obsah ze všech URL
+        const articles = [];
+        for (const url of urls) {
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                },
+            });
+
+            if (!response.ok) {
+                console.error(`Nepodařilo se načíst stránku ${url}: ${response.statusText}`);
+                continue;
+            }
+
+            const html = await response.text();
+            const dom = new JSDOM(html, { url });
+            const reader = new Readability(dom.window.document);
+            const article = reader.parse();
+
+            if (article && article.textContent) {
+                articles.push({ url, content: article.textContent });
+            } else {
+                console.error(`Nepodařilo se extrahovat obsah z ${url}`);
+            }
+        }
+
+        if (articles.length === 0) {
+            throw new Error('Nepodařilo se načíst žádný obsah z uvedených stránek');
+        }
+
+        // Spojíme obsah všech článků do jednoho textu
+        const combinedContent = articles.map(article => `Obsah z ${article.url}:\n${article.content}`).join('\n\n');
+
+        // Definujeme popis sumarizace podle typu
+        const summaryDescription = type === 'cr'
+            ? 'hlavních novinek z České republiky'
+            : 'hlavních novinek ze světa';
+
+        // Vytvoříme prompt pro OpenAI
+        const prompt = `Napiš referát v češtině na základě následujících textů z více zdrojů. Referát by měl být souvislý text o délce přibližně ${wordCount} slov, shrnující ${summaryDescription}. Zaměř se na nejdůležitější události, trendy a informace. Na konci přidej 2-3 citace z textů (přímé věty nebo úryvky, které podporují tvé tvrzení). Pokud text není v češtině, přelož citace do češtiny. Texty: ${combinedContent.slice(0, 8000)}`;
+
+        const completion = await openai.chat.completions.create({
+            model: model,
+            messages: [
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ],
+            max_tokens: maxTokens,
+            temperature: 0.7,
+        });
+
+        const referat = completion.choices[0].message.content.trim();
+        res.json({ referat });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
