@@ -9,8 +9,11 @@
     "express": "^4.17.1",
     "node-fetch": "^2.6.1",
     "jsdom": "^16.5.0",
-    "readability": "^0.0.3",
+    "@mozilla/readability": "^0.5.0",
     "openai": "^4.0.0",
     "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
