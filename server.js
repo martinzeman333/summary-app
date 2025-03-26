@@ -170,7 +170,7 @@ app.post('/api/summarize-news', async (req, res) => {
                             title: article.title || 'Bez názvu'
                         });
                         // Uložíme odkaz na článek pro pozdější použití
-                        articleLinks.set(article.textContent.slice(0, 100),那么, articleLinks.set(article.title, article.title.slice(0, 100));
+                        articleLinks.set(article.title, article.url);
                     } else {
                         console.error(`Nepodařilo se extrahovat obsah z ${articleUrl}`);
                     }
