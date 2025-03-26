@@ -454,10 +454,17 @@
             document.getElementById('pitchValue').textContent = this.value;
         });
 
-        // Funkce pro převod URL na klikací odkazy
-        function makeLinksClickable(text) {
+        // Funkce pro převod URL na klikací odkazy a Markdown tučného písma na HTML
+        function formatText(text) {
+            // Nejprve převedeme Markdown tučné písmo (**text**) na HTML (<strong>text</strong>)
+            const boldRegex = /\*\*(.*?)\*\*/g;
+            text = text.replace(boldRegex, '<strong>$1</strong>');
+
+            // Poté převedeme URL na klikací odkazy
             const urlRegex = /(https?:\/\/[^\s]+)/g;
-            return text.replace(urlRegex, '<a href="$1" target="_blank">$1</a>');
+            text = text.replace(urlRegex, '<a href="$1" target="_blank">$1</a>');
+
+            return text;
         }
 
         async function generateSummary() {
@@ -502,7 +509,7 @@
                 }
 
                 const data = await response.json();
-                referatDiv.innerHTML = makeLinksClickable(data.referat || 'Žádný referát nebyl vygenerován.');
+                referatDiv.innerHTML = formatText(data.referat || 'Žádný referát nebyl vygenerován.');
             } catch (error) {
                 clearInterval(interval);
                 progressBar.style.width = '0%';
@@ -553,7 +560,7 @@
                 }
 
                 const data = await response.json();
-                referatDiv.innerHTML = makeLinksClickable(data.referat || 'Žádný referát nebyl vygenerován.');
+                referatDiv.innerHTML = formatText(data.referat || 'Žádný referát nebyl vygenerován.');
             } catch (error) {
                 clearInterval(interval);
                 progressBar.style.width = '0%';
@@ -607,7 +614,7 @@
                 }
 
                 const data = await response.json();
-                referatDiv.innerHTML = makeLinksClickable(data.referat || 'Žádný referát nebyl vygenerován.');
+                referatDiv.innerHTML = formatText(data.referat || 'Žádný referát nebyl vygenerován.');
             } catch (error) {
                 clearInterval(interval);
                 progressBar.style.width = '0%';
@@ -661,7 +668,7 @@
                 }
 
                 const data = await response.json();
-                referatDiv.innerHTML = makeLinksClickable(data.referat || 'Žádný referát nebyl vygenerován.');
+                referatDiv.innerHTML = formatText(data.referat || 'Žádný referát nebyl vygenerován.');
             } catch (error) {
                 clearInterval(interval);
                 progressBar.style.width = '0%';
