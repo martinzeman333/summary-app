@@ -114,20 +114,20 @@
         }
 
         #news-cr-button {
-            background: linear-gradient(90deg, #d32f2f, #f44336);
+            background: linear-gradient(90deg, #0d47a1, #1976d2); /* Tmavě modrá pro Novinky ČR */
         }
 
         #news-cr-button:hover {
-            background: linear-gradient(90deg, #c62828, #e53935);
+            background: linear-gradient(90deg, #0b3d91, #1565c0);
             transform: scale(1.02);
         }
 
         #news-world-button {
-            background: linear-gradient(90deg, #1976d2, #2196f3);
+            background: linear-gradient(90deg, #1565c0, #2196f3); /* O něco světlejší tmavě modrá pro Novinky Svět */
         }
 
         #news-world-button:hover {
-            background: linear-gradient(90deg, #1565c0, #1e88e5);
+            background: linear-gradient(90deg, #0d47a1, #1e88e5);
             transform: scale(1.02);
         }
 
@@ -150,6 +150,7 @@
 
         .voice-settings {
             display: flex;
+            flex-wrap: wrap; /* Prvky se zalomí na nový řádek, pokud je šířka malá */
             gap: 12px;
             margin-top: 10px;
             margin-bottom: 20px;
@@ -161,11 +162,13 @@
             display: flex;
             align-items: center;
             gap: 5px;
+            flex: 1 1 100%; /* Label zabere celou šířku na menších obrazovkách */
         }
 
         .voice-settings select,
         .voice-settings input[type="range"] {
-            flex: 1;
+            flex: 1 1 200px; /* Minimální šířka 200px, ale prvek se může zvětšit */
+            max-width: 300px; /* Maximální šířka, aby nepřesahoval */
             padding: 8px;
             border: 1px solid #444;
             border-radius: 8px;
