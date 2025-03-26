@@ -1,19 +1,16 @@
 {
-    "name": "summary-app",
-    "version": "1.0.0",
-    "description": "A simple app to summarize web articles using OpenAI",
-    "main": "server.js",
-    "scripts": {
-      "start": "node server.js"
-    },
-    "author": "Martin",
-    "license": "ISC",
-    "dependencies": {
-      "express": "^4.17.1",
-      "node-fetch": "^2.6.1",
-      "cheerio": "^1.0.0-rc.12",
-      "openai": "^4.0.0",
-      "@mozilla/readability": "^0.5.0",
-      "jsdom": "^25.0.0"
-    }
+  "name": "summary-app",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "node-fetch": "^2.6.1",
+    "jsdom": "^16.5.0",
+    "readability": "^0.0.3",
+    "openai": "^4.0.0",
+    "dotenv": "^16.4.5"
   }
+}
