@@ -146,14 +146,21 @@ app.post('/api/summarize-news', async (req, res) => {
         const combinedContent = articles.map(article => `Obsah z ${article.url} (Titulek: ${article.title}):\n${article.content}`).join('\n\n');
 
         // Definujeme popis sumarizace podle typu
-        const summaryDescription = type === 'cr'
-            ? 'nejnovějších a nejzajímavějších zpráv z České republiky'
-            : 'nejnovějších a nejzajímavějších zpráv ze světa';
+        let summaryDescription;
+        if (type === 'cr') {
+            summaryDescription = 'nejnovějších a nejzajímavějších zpráv z České republiky';
+        } else if (type === 'world') {
+            summaryDescription = 'nejnovějších a nejzajímavějších zpráv ze světa';
+        } else if (type === 'homepage') {
+            summaryDescription = 'nejnovějších a nejzajímavějších zpráv z vybrané zpravodajské stránky';
+        } else {
+            throw new Error('Neplatný typ sumarizace');
+        }
 
         // Vytvoříme prompt pro OpenAI
         const prompt = `Prohledej následující texty z více zdrojů a vytvoř seznam ${summaryDescription}. Pro každou zprávu uveď:
         - Krátký titulek (max. 10 slov),
-        - Stručné shrnutí (2-3 věty, zdůrazni podstatné informace),
+        - Stručné shrnutí (2-3 věty, zdůrazni podstatné informace, přelož do češtiny, pokud je text v jiném jazyce),
         - Odkaz na původní článek (URL).
         Seznam by měl obsahovat 5-10 nejzajímavějších zpráv, celkově o délce přibližně ${wordCount} slov. Nepoužívej nadpisy jako ### Závěr nebo ### Citace. Texty: ${combinedContent.slice(0, 8000)}`;
 
