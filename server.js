@@ -47,6 +47,7 @@ app.post('/api/summary', async (req, res) => {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             },
+            timeout: 10000, // Timeout 10 sekund pro fetch
         });
 
         if (!response.ok) {
@@ -112,15 +113,15 @@ app.post('/api/summarize-news', async (req, res) => {
     const maxTokens = Math.round(wordCount * 1.5);
 
     try {
-        // Načteme obsah ze všech URL a extrahujeme odkazy na jednotlivé články
+        // Načteme obsah ze všech URL
         const articles = [];
-        const articleLinks = new Map(); // Mapa pro uchování odkazů na články
 
         for (const url of urls) {
             const response = await fetch(url, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 },
+                timeout: 10000, // Timeout 10 sekund pro fetch
             });
 
             if (!response.ok) {
@@ -136,7 +137,7 @@ app.post('/api/summarize-news', async (req, res) => {
             const links = Array.from(document.querySelectorAll('a'))
                 .map(a => {
                     const href = a.href;
-                    // Filtrujeme pouze odkazy, které pravděpodobně vedou na články (např. obsahují titulek a nejsou na jiné sekce)
+                    // Filtrujeme pouze odkazy, které pravděpodobně vedou na články
                     if (href && href.startsWith('http') && !href.includes('category') && !href.includes('tag') && !href.includes('author')) {
                         return href;
                     }
@@ -144,18 +145,19 @@ app.post('/api/summarize-news', async (req, res) => {
                 })
                 .filter(link => link !== null);
 
-            // Načteme obsah jednotlivých článků
-            for (const articleUrl of links.slice(0, 10)) { // Omezíme na 10 článků, aby to nebylo příliš náročné
+            // Načteme obsah jednotlivých článků (max. 3 na stránku) paralelně
+            const articlePromises = links.slice(0, 3).map(async (articleUrl) => {
                 try {
                     const articleResponse = await fetch(articleUrl, {
                         headers: {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                         },
+                        timeout: 10000, // Timeout 10 sekund pro fetch
                     });
 
                     if (!articleResponse.ok) {
                         console.error(`Nepodařilo se načíst článek ${articleUrl}: ${articleResponse.statusText}`);
-                        continue;
+                        return null;
                     }
 
                     const articleHtml = await articleResponse.text();
@@ -164,20 +166,29 @@ app.post('/api/summarize-news', async (req, res) => {
                     const article = reader.parse();
 
                     if (article && article.textContent) {
-                        articles.push({
+                        return {
                             url: articleUrl,
                             content: article.textContent,
                             title: article.title || 'Bez názvu'
-                        });
-                        // Uložíme odkaz na článek pro pozdější použití
-                        articleLinks.set(article.title, article.url);
+                        };
                     } else {
                         console.error(`Nepodařilo se extrahovat obsah z ${articleUrl}`);
+                        return null;
                     }
                 } catch (err) {
                     console.error(`Chyba při načítání článku ${articleUrl}: ${err.message}`);
+                    return null;
                 }
-            }
+            });
+
+            // Počkáme na všechny články paralelně
+            const fetchedArticles = await Promise.all(articlePromises);
+            // Přidáme pouze úspěšně načtené články
+            fetchedArticles.forEach(article => {
+                if (article) {
+                    articles.push(article);
+                }
+            });
         }
 
         if (articles.length === 0) {
@@ -199,11 +210,10 @@ app.post('/api/summarize-news', async (req, res) => {
             throw new Error('Neplatný typ sumarizace');
         }
 
-        // Vytvoříme prompt pro OpenAI
+        // Vytvoříme prompt pro OpenAI (bez odkazů na původní články)
         const prompt = `Prohledej následující texty z více zdrojů a vytvoř seznam ${summaryDescription}. Pro každou zprávu uveď:
         - Krátký titulek (max. 10 slov),
-        - Podrobné shrnutí (4-5 vět, zdůrazni podstatné informace, přelož do češtiny, pokud je text v jiném jazyce),
-        - Odkaz na původní článek jako holé URL (např. https://example.com/article, bez Markdown formátu [text](url)).
+        - Podrobné shrnutí (4-5 vět, zdůrazni podstatné informace, přelož do češtiny, pokud je text v jiném jazyce).
         Seznam by měl obsahovat 5-10 nejzajímavějších zpráv, celkově o délce přibližně ${wordCount} slov. Nepoužívej nadpisy jako ### Závěr nebo ### Citace. Texty: ${combinedContent.slice(0, 8000)}`;
 
         const completion = await openai.chat.completions.create({
@@ -218,11 +228,7 @@ app.post('/api/summarize-news', async (req, res) => {
             temperature: 0.7,
         });
 
-        let referat = completion.choices[0].message.content.trim();
-
-        // Nahradíme Markdown odkazy (např. [Odkaz na původní článek](url)) na holé URL
-        referat = referat.replace(/\[.*?\]\((https?:\/\/[^\s]+)\)/g, '$1');
-
+        const referat = completion.choices[0].message.content.trim();
         res.json({ referat });
     } catch (error) {
         res.status(500).json({ error: error.message });
