@@ -34,20 +34,20 @@ app.post('/api/summary', async (req, res) => {
     }
 
     const lengthMap = {
-        short: 300,  // Změněno z 100 na 300 slov
-        medium: 600, // Změněno z 200 na 600 slov
-        long: 1000,  // Změněno z 300 na 1000 slov
+        short: 300,
+        medium: 600,
+        long: 1000,
     };
 
-    const wordCount = lengthMap[length] || 600; // Výchozí hodnota je nyní 600 slov (střední)
-    const maxTokens = Math.round(wordCount * 1.5); // Přepočítáme maxTokens podle nové délky
+    const wordCount = lengthMap[length] || 600;
+    const maxTokens = Math.round(wordCount * 1.5);
 
     try {
         const response = await fetch(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             },
-            timeout: 10000, // Timeout 10 sekund pro fetch
+            timeout: 5000, // Zkráceno na 5 sekund
         });
 
         if (!response.ok) {
@@ -117,12 +117,19 @@ app.post('/api/summarize-news', async (req, res) => {
         const articles = [];
 
         for (const url of urls) {
-            const response = await fetch(url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                },
-                timeout: 10000, // Timeout 10 sekund pro fetch
-            });
+            console.log(`Načítám homepage: ${url}`);
+            let response;
+            try {
+                response = await fetch(url, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                    },
+                    timeout: 5000, // Zkráceno na 5 sekund
+                });
+            } catch (err) {
+                console.error(`Chyba při načítání homepage ${url}: ${err.message}`);
+                continue;
+            }
 
             if (!response.ok) {
                 console.error(`Nepodařilo se načíst stránku ${url}: ${response.statusText}`);
@@ -145,14 +152,17 @@ app.post('/api/summarize-news', async (req, res) => {
                 })
                 .filter(link => link !== null);
 
+            console.log(`Nalezeno ${links.length} odkazů na stránce ${url}`);
+
             // Načteme obsah jednotlivých článků (max. 3 na stránku) paralelně
             const articlePromises = links.slice(0, 3).map(async (articleUrl) => {
+                console.log(`Načítám článek: ${articleUrl}`);
                 try {
                     const articleResponse = await fetch(articleUrl, {
                         headers: {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                         },
-                        timeout: 10000, // Timeout 10 sekund pro fetch
+                        timeout: 5000, // Zkráceno na 5 sekund
                     });
 
                     if (!articleResponse.ok) {
@@ -166,6 +176,7 @@ app.post('/api/summarize-news', async (req, res) => {
                     const article = reader.parse();
 
                     if (article && article.textContent) {
+                        console.log(`Úspěšně načten článek: ${articleUrl}, titulek: ${article.title}`);
                         return {
                             url: articleUrl,
                             content: article.textContent,
@@ -192,8 +203,11 @@ app.post('/api/summarize-news', async (req, res) => {
         }
 
         if (articles.length === 0) {
-            throw new Error('Nepodařilo se načíst žádný obsah z uvedených stránek');
+            console.error('Nepodařilo se načíst žádné články z žádné stránky.');
+            return res.status(500).json({ error: 'Nepodařilo se načíst žádné články. Stránka může obsahovat dynamický obsah, který nelze načíst.' });
         }
+
+        console.log(`Celkem načteno ${articles.length} článků.`);
 
         // Spojíme obsah všech článků do jednoho textu
         const combinedContent = articles.map(article => `Obsah z ${article.url} (Titulek: ${article.title}):\n${article.content}`).join('\n\n');
@@ -231,6 +245,7 @@ app.post('/api/summarize-news', async (req, res) => {
         const referat = completion.choices[0].message.content.trim();
         res.json({ referat });
     } catch (error) {
+        console.error(`Chyba při zpracování požadavku: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });
