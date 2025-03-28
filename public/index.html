@@ -153,7 +153,7 @@
         }
 
         #news-cr-button {
-            background: linear-gradient(90deg, #0d47a1, #1976d2); /* Tmavě modrá pro Novinky ČR */
+            background: linear-gradient(90deg, #0d47a1, #1976d2);
         }
 
         #news-cr-button:hover {
@@ -162,7 +162,7 @@
         }
 
         #news-world-button {
-            background: linear-gradient(90deg, #1565c0, #2196f3); /* O něco světlejší tmavě modrá pro Novinky Svět */
+            background: linear-gradient(90deg, #1565c0, #2196f3);
         }
 
         #news-world-button:hover {
@@ -189,37 +189,37 @@
 
         .voice-settings {
             display: flex;
-            gap: 8px; /* Menší mezera mezi prvky */
+            gap: 8px;
             margin-top: 8px;
             margin-bottom: 15px;
-            align-items: center; /* Vertikální zarovnání prvků */
+            align-items: center;
         }
 
         .voice-settings label {
             color: #d0d0d0;
-            font-size: 0.8rem; /* Menší písmo */
+            font-size: 0.8rem;
             display: flex;
             align-items: center;
             gap: 4px;
-            white-space: nowrap; /* Zabrání zalomení textu v labelu */
+            white-space: nowrap;
         }
 
         .voice-settings select,
         .voice-settings input[type="range"] {
-            flex: 0 1 100px; /* Ještě menší základní šířka */
-            max-width: 120px; /* Ještě menší maximální šířka */
-            padding: 4px; /* Menší padding */
+            flex: 0 1 100px;
+            max-width: 120px;
+            padding: 4px;
             border: 1px solid #444;
-            border-radius: 6px; /* Menší zaoblení */
+            border-radius: 6px;
             background-color: #333;
             color: #e0e0e0;
-            font-size: 0.8rem; /* Menší písmo */
+            font-size: 0.8rem;
             cursor: pointer;
         }
 
         .voice-settings input[type="range"] {
             padding: 0;
-            height: 16px; /* Menší výška posuvníku */
+            height: 16px;
         }
 
         #result {
@@ -352,7 +352,7 @@
 
             .voice-settings select,
             .voice-settings input[type="range"] {
-                flex: 1 1 100%; /* Na mobilu zabere celou šířku */
+                flex: 1 1 100%;
                 max-width: 100%;
             }
 
@@ -448,7 +448,7 @@
             const voiceSelect = document.getElementById('voiceSelect');
             voiceSelect.innerHTML = '';
             voices.forEach((voice, index) => {
-                if (voice.lang === 'cs-CZ') { // Filtrovat pouze české hlasy
+                if (voice.lang === 'cs-CZ') {
                     const option = document.createElement('option');
                     option.value = index;
                     option.textContent = `${voice.name} (${voice.lang})`;
@@ -457,11 +457,9 @@
             });
         }
 
-        // Načtení hlasů při startu a při změně dostupných hlasů
         window.speechSynthesis.onvoiceschanged = loadVoices;
         loadVoices();
 
-        // Aktualizace zobrazení hodnot rychlosti a výšky tónu
         document.getElementById('rate').addEventListener('input', function() {
             document.getElementById('rateValue').textContent = this.value;
         });
@@ -470,17 +468,13 @@
             document.getElementById('pitchValue').textContent = this.value;
         });
 
-        // Funkce pro formátování textu
         function formatText(text) {
-            // Převedeme Markdown tučné písmo (**text**) na HTML (<strong>text</strong>)
             const boldRegex = /\*\*(.*?)\*\*/g;
             text = text.replace(boldRegex, '<strong>$1</strong>');
 
-            // Převedeme URL na klikací odkazy
             const urlRegex = /(https?:\/\/[^\s]+)/g;
             text = text.replace(urlRegex, '<a href="$1" target="_blank">$1</a>');
 
-            // Přidáme třídu .source-info pro zdroj a datum
             const sourceInfoRegex = /\*\(Zdroj:.*?\)\*/g;
             text = text.replace(sourceInfoRegex, (match) => {
                 return `<span class="source-info">${match.slice(1, -1)}</span>`;
@@ -607,17 +601,8 @@
 
             referatDiv.innerHTML = '';
             lastUpdatedDiv.innerHTML = '';
-            progressContainer.style.display = 'block';
-            progressBar.style.width = '0%';
 
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += 5;
-                if (progress <= 90) {
-                    progressBar.style.width = `${progress}%`;
-                }
-            }, 100);
-
+            // Nejprve zkontrolujeme, zda je sumarizace v mezipaměti
             try {
                 const response = await fetch('/api/summarize-news', {
                     method: 'POST',
@@ -627,25 +612,38 @@
                     body: JSON.stringify({ type, length }),
                 });
 
-                clearInterval(interval);
-                progressBar.style.width = '100%';
-
                 if (!response.ok) {
                     throw new Error('Chyba při zpracování požadavku');
                 }
 
                 const data = await response.json();
+
+                // Pokud je odpověď rychlá (z mezipaměti), nezobrazíme progress bar
                 lastUpdatedDiv.innerHTML = `Poslední aktualizace: ${data.lastUpdated}`;
                 referatDiv.innerHTML = formatText(data.referat || 'Žádný referát nebyl vygenerován.');
+
+                // Pokud byla sumarizace generována (trvalo to déle), zobrazíme progress bar
+                if (response.headers.get('X-Generated-Now') === 'true') {
+                    progressContainer.style.display = 'block';
+                    progressBar.style.width = '0%';
+
+                    let progress = 0;
+                    const interval = setInterval(() => {
+                        progress += 5;
+                        if (progress <= 90) {
+                            progressBar.style.width = `${progress}%`;
+                        }
+                    }, 100);
+
+                    clearInterval(interval);
+                    progressBar.style.width = '100%';
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                    }, 500);
+                }
             } catch (error) {
-                clearInterval(interval);
-                progressBar.style.width = '0%';
                 alert(error.message);
                 referatDiv.innerHTML = '';
-            } finally {
-                setTimeout(() => {
-                    progressContainer.style.display = 'none';
-                }, 500);
             }
         }
 
@@ -659,17 +657,8 @@
 
             referatDiv.innerHTML = '';
             lastUpdatedDiv.innerHTML = '';
-            progressContainer.style.display = 'block';
-            progressBar.style.width = '0%';
 
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += 5;
-                if (progress <= 90) {
-                    progressBar.style.width = `${progress}%`;
-                }
-            }, 100);
-
+            // Nejprve zkontrolujeme, zda je sumarizace v mezipaměti
             try {
                 const response = await fetch('/api/summarize-news', {
                     method: 'POST',
@@ -679,25 +668,38 @@
                     body: JSON.stringify({ type, length }),
                 });
 
-                clearInterval(interval);
-                progressBar.style.width = '100%';
-
                 if (!response.ok) {
                     throw new Error('Chyba při zpracování požadavku');
                 }
 
                 const data = await response.json();
+
+                // Pokud je odpověď rychlá (z mezipaměti), nezobrazíme progress bar
                 lastUpdatedDiv.innerHTML = `Poslední aktualizace: ${data.lastUpdated}`;
                 referatDiv.innerHTML = formatText(data.referat || 'Žádný referát nebyl vygenerován.');
+
+                // Pokud byla sumarizace generována (trvalo to déle), zobrazíme progress bar
+                if (response.headers.get('X-Generated-Now') === 'true') {
+                    progressContainer.style.display = 'block';
+                    progressBar.style.width = '0%';
+
+                    let progress = 0;
+                    const interval = setInterval(() => {
+                        progress += 5;
+                        if (progress <= 90) {
+                            progressBar.style.width = `${progress}%`;
+                        }
+                    }, 100);
+
+                    clearInterval(interval);
+                    progressBar.style.width = '100%';
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                    }, 500);
+                }
             } catch (error) {
-                clearInterval(interval);
-                progressBar.style.width = '0%';
                 alert(error.message);
                 referatDiv.innerHTML = '';
-            } finally {
-                setTimeout(() => {
-                    progressContainer.style.display = 'none';
-                }, 500);
             }
         }
 
