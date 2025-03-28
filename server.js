@@ -4,6 +4,7 @@ const { JSDOM } = require('jsdom');
 const { Readability } = require('@mozilla/readability');
 const { OpenAI } = require('openai');
 const Parser = require('rss-parser');
+const levenshtein = require('fast-levenshtein'); // Přidání knihovny pro Levenshteinovu vzdálenost
 require('dotenv').config();
 
 const app = express();
@@ -30,25 +31,33 @@ function formatDateTime(date) {
     });
 }
 
-// Funkce pro sumarizaci (stejná logika jako dříve)
+// Funkce pro výpočet podobnosti titulků
+function areTitlesSimilar(title1, title2) {
+    const distance = levenshtein.get(title1.toLowerCase(), title2.toLowerCase());
+    const maxLength = Math.max(title1.length, title2.length);
+    const similarity = 1 - distance / maxLength; // Podobnost v rozmezí 0-1
+    return similarity > 0.9; // Pokud je podobnost větší než 90 %, považujeme titulky za duplicitní
+}
+
+// Funkce pro sumarizaci
 async function generateSummary(type) {
     const wordCount = 3000;
     const maxTokens = Math.round(wordCount * 1.5);
 
-    // Definice RSS zdrojů s názvy
+    // Definice RSS zdrojů s názvy (odstraněny problematické odkazy)
     let rssFeeds;
     if (type === 'cr') {
         rssFeeds = [
             { url: 'https://www.irozhlas.cz/rss/irozhlas/section/zpravy-domov', name: 'iRozhlas' },
-            { url: 'https://www.seznamzprav.cz/zpravy.php?rubrika=domaci', name: 'Seznam Zprávy' }
+            { url: 'https://www.novinky.cz/rss', name: 'Novinky.cz' } // Nový zdroj pro ČR
         ];
     } else if (type === 'world') {
         rssFeeds = [
             { url: 'https://www.irozhlas.cz/rss/irozhlas/section/zpravy-svet', name: 'iRozhlas' },
-            { url: 'https://www.seznamzprav.cz/zpravy.php?rubrika=zahranici', name: 'Seznam Zprávy' },
             { url: 'https://ct24.ceskatelevize.cz/rss', name: 'ČT24' },
             { url: 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml', name: 'New York Times' },
-            { url: 'https://feeds.skynews.com/feeds/rss/world.xml', name: 'Sky News' }
+            { url: 'https://feeds.skynews.com/feeds/rss/world.xml', name: 'Sky News' },
+            { url: 'http://feeds.bbci.co.uk/news/world/rss.xml', name: 'BBC News' } // Nový zdroj pro svět
         ];
     } else {
         throw new Error('Neplatný typ sumarizace');
@@ -77,11 +86,28 @@ async function generateSummary(type) {
             const articleTitle = item.title || 'Bez názvu';
             const pubDate = item.pubDate || item.isoDate || 'Není uvedeno datum';
 
-            // Kontrola duplicit
-            if (seenUrls.has(articleUrl) || seenTitles.has(articleTitle)) {
-                console.log(`Duplicita: ${articleTitle}`);
+            // Kontrola duplicit podle URL
+            if (seenUrls.has(articleUrl)) {
+                console.log(`Duplicita (URL): ${articleTitle}`);
                 continue;
             }
+
+            // Kontrola duplicit podle titulků (přesná shoda)
+            if (seenTitles.has(articleTitle)) {
+                console.log(`Duplicita (titulek): ${articleTitle}`);
+                continue;
+            }
+
+            // Kontrola podobnosti titulků
+            let isDuplicate = false;
+            for (const existingTitle of seenTitles) {
+                if (areTitlesSimilar(articleTitle, existingTitle)) {
+                    console.log(`Duplicita (podobný titulek): ${articleTitle} ~ ${existingTitle}`);
+                    isDuplicate = true;
+                    break;
+                }
+            }
+            if (isDuplicate) continue;
 
             seenUrls.add(articleUrl);
             seenTitles.add(articleTitle);
