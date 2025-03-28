@@ -4,7 +4,7 @@ const { JSDOM } = require('jsdom');
 const { Readability } = require('@mozilla/readability');
 const { OpenAI } = require('openai');
 const Parser = require('rss-parser');
-const levenshtein = require('fast-levenshtein'); // Přidání knihovny pro Levenshteinovu vzdálenost
+const levenshtein = require('fast-levenshtein');
 require('dotenv').config();
 
 const app = express();
@@ -35,8 +35,21 @@ function formatDateTime(date) {
 function areTitlesSimilar(title1, title2) {
     const distance = levenshtein.get(title1.toLowerCase(), title2.toLowerCase());
     const maxLength = Math.max(title1.length, title2.length);
-    const similarity = 1 - distance / maxLength; // Podobnost v rozmezí 0-1
-    return similarity > 0.9; // Pokud je podobnost větší než 90 %, považujeme titulky za duplicitní
+    const similarity = 1 - distance / maxLength;
+    return similarity > 0.9;
+}
+
+// Funkce pro kontrolu, zda článek patří do kategorie "ČR"
+function isArticleFromCR(article) {
+    const crKeywords = [
+        'česko', 'praha', 'brno', 'ostrava', 'plzeň', 'liberec', 'olomouc',
+        'česká republika', 'čr', 'karlovy vary', 'hradec králové', 'pardubice'
+    ];
+    const title = (article.title || '').toLowerCase();
+    const content = (article.content || '').toLowerCase();
+
+    // Pokud titulek nebo obsah obsahuje některé z klíčových slov, považujeme článek za domácí
+    return crKeywords.some(keyword => title.includes(keyword) || content.includes(keyword));
 }
 
 // Funkce pro sumarizaci
@@ -44,12 +57,12 @@ async function generateSummary(type) {
     const wordCount = 3000;
     const maxTokens = Math.round(wordCount * 1.5);
 
-    // Definice RSS zdrojů s názvy (odstraněny problematické odkazy)
+    // Definice RSS zdrojů s názvy
     let rssFeeds;
     if (type === 'cr') {
         rssFeeds = [
             { url: 'https://www.irozhlas.cz/rss/irozhlas/section/zpravy-domov', name: 'iRozhlas' },
-            { url: 'https://www.novinky.cz/rss', name: 'Novinky.cz' } // Nový zdroj pro ČR
+            { url: 'https://www.novinky.cz/rss/domaci', name: 'Novinky.cz' } // Specifický feed pro domácí zprávy
         ];
     } else if (type === 'world') {
         rssFeeds = [
@@ -57,7 +70,7 @@ async function generateSummary(type) {
             { url: 'https://ct24.ceskatelevize.cz/rss', name: 'ČT24' },
             { url: 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml', name: 'New York Times' },
             { url: 'https://feeds.skynews.com/feeds/rss/world.xml', name: 'Sky News' },
-            { url: 'http://feeds.bbci.co.uk/news/world/rss.xml', name: 'BBC News' } // Nový zdroj pro svět
+            { url: 'http://feeds.bbci.co.uk/news/world/rss.xml', name: 'BBC News' }
         ];
     } else {
         throw new Error('Neplatný typ sumarizace');
@@ -113,6 +126,7 @@ async function generateSummary(type) {
             seenTitles.add(articleTitle);
 
             // Načtení obsahu článku
+            let articleContent = null;
             try {
                 const response = await fetch(articleUrl, {
                     headers: { 'User-Agent': 'Mozilla/5.0' },
@@ -126,17 +140,30 @@ async function generateSummary(type) {
                 const article = reader.parse();
 
                 if (article && article.textContent) {
-                    allArticles.push({
+                    articleContent = {
                         url: articleUrl,
                         content: article.textContent,
                         title: article.title || articleTitle,
                         pubDate: pubDate,
                         source: feed.name
-                    });
+                    };
                 }
             } catch (err) {
                 console.error(`Chyba článku ${articleUrl}: ${err.message}`);
+                continue;
             }
+
+            if (!articleContent) continue;
+
+            // Filtrování obsahu pro "Novinky ČR"
+            if (type === 'cr') {
+                if (!isArticleFromCR(articleContent)) {
+                    console.log(`Článek ${articleTitle} není z ČR, přeskakuji.`);
+                    continue;
+                }
+            }
+
+            allArticles.push(articleContent);
         }
     }
 
@@ -144,7 +171,7 @@ async function generateSummary(type) {
     allArticles.sort((a, b) => {
         const dateA = new Date(a.pubDate);
         const dateB = new Date(b.pubDate);
-        return dateB - dateA; // Od nejnovějšího po nejstarší
+        return dateB - dateA;
     });
 
     if (allArticles.length === 0) {
@@ -185,14 +212,14 @@ async function updateSummaries() {
         const crSummary = await generateSummary('cr');
         cache.cr.referat = crSummary;
         cache.cr.lastUpdated = new Date();
-        console.log('Novinky ČR aktualizovány.');
+        console.log('Novinky ČR aktualizovány:', cache.cr);
 
         // Aktualizace Novinky svět
         console.log('Aktualizuji Novinky svět...');
         const worldSummary = await generateSummary('world');
         cache.world.referat = worldSummary;
         cache.world.lastUpdated = new Date();
-        console.log('Novinky svět aktualizovány.');
+        console.log('Novinky svět aktualizovány:', cache.world);
     } catch (error) {
         console.error(`Chyba při automatické aktualizaci: ${error.message}`);
     }
@@ -213,13 +240,15 @@ app.post('/api/summarize-news', async (req, res) => {
     }
 
     try {
-        // Pokud je sumarizace v mezipaměti, vrátíme ji
+        // Kontrola mezipaměti
         if (type === 'cr' && cache.cr.referat) {
+            console.log('Načítám Novinky ČR z mezipaměti:', cache.cr);
             return res.json({
                 referat: cache.cr.referat,
                 lastUpdated: cache.cr.lastUpdated ? formatDateTime(cache.cr.lastUpdated) : 'Není uvedeno'
             });
         } else if (type === 'world' && cache.world.referat) {
+            console.log('Načítám Novinky svět z mezipaměti:', cache.world);
             return res.json({
                 referat: cache.world.referat,
                 lastUpdated: cache.world.lastUpdated ? formatDateTime(cache.world.lastUpdated) : 'Není uvedeno'
@@ -227,10 +256,12 @@ app.post('/api/summarize-news', async (req, res) => {
         }
 
         // Pokud sumarizace není v mezipaměti, vygenerujeme ji
+        console.log(`Mezipaměť pro ${type} je prázdná, generuji novou sumarizaci...`);
         const referat = await generateSummary(type);
         cache[type].referat = referat;
         cache[type].lastUpdated = new Date();
 
+        console.log(`Nová sumarizace pro ${type} uložena do mezipaměti:`, cache[type]);
         res.json({
             referat,
             lastUpdated: formatDateTime(cache[type].lastUpdated)
