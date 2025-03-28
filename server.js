@@ -14,12 +14,6 @@ app.use(express.static('public'));
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const parser = new Parser();
 
-// Mezipaměť pro uložení sumarizací
-const cache = {
-    cr: { referat: null, lastUpdated: null },
-    world: { referat: null, lastUpdated: null }
-};
-
 // Funkce pro formátování data a času
 function formatDateTime(date) {
     return date.toLocaleString('cs-CZ', {
@@ -71,6 +65,9 @@ async function generateSummary(type) {
             { url: 'https://feeds.skynews.com/feeds/rss/world.xml', name: 'Sky News' },
             { url: 'http://feeds.bbci.co.uk/news/world/rss.xml', name: 'BBC News' }
         ];
+    } else if (type === 'homepage') {
+        // Pro homepage budeme očekávat URL v těle požadavku
+        return;
     } else {
         throw new Error('Neplatný typ sumarizace');
     }
@@ -96,9 +93,7 @@ async function generateSummary(type) {
         for (const item of feedData.items.slice(0, 10)) {
             const articleUrl = item.link;
             const articleTitle = item.title || 'Bez názvu';
-            const pubDateRaw = item.pubDate;
-            const isoDateRaw = item.isoDate;
-            console.log(`Článek: ${articleTitle}, pubDate: ${pubDateRaw}, isoDate: ${isoDateRaw}`);
+            const pubDate = item.pubDate || item.isoDate || 'Není uvedeno datum';
 
             // Kontrola duplicit podle URL
             if (seenUrls.has(articleUrl)) {
@@ -126,9 +121,8 @@ async function generateSummary(type) {
             seenUrls.add(articleUrl);
             seenTitles.add(articleTitle);
 
-            // Načtení obsahu článku a extrakce data z HTML
+            // Načtení obsahu článku
             let articleContent = null;
-            let extractedDate = null;
             try {
                 const response = await fetch(articleUrl, {
                     headers: { 'User-Agent': 'Mozilla/5.0' },
@@ -138,18 +132,6 @@ async function generateSummary(type) {
 
                 const html = await response.text();
                 const dom = new JSDOM(html, { url: articleUrl });
-
-                // Extrakce data z HTML
-                const timeElement = dom.window.document.querySelector('time');
-                if (timeElement && timeElement.dateTime) {
-                    extractedDate = timeElement.dateTime;
-                } else {
-                    const dateElement = dom.window.document.querySelector('.article__date, .date, .published-date');
-                    if (dateElement) {
-                        extractedDate = dateElement.textContent.trim();
-                    }
-                }
-
                 const reader = new Readability(dom.window.document);
                 const article = reader.parse();
 
@@ -158,7 +140,7 @@ async function generateSummary(type) {
                         url: articleUrl,
                         content: article.textContent,
                         title: article.title || articleTitle,
-                        pubDate: pubDateRaw || isoDateRaw || extractedDate || 'Není uvedeno datum',
+                        pubDate: pubDate,
                         source: feed.name
                     };
                 }
@@ -168,18 +150,6 @@ async function generateSummary(type) {
             }
 
             if (!articleContent) continue;
-
-            // Formátování data
-            let formattedDate = articleContent.pubDate;
-            if (articleContent.pubDate !== 'Není uvedeno datum') {
-                try {
-                    formattedDate = formatDateTime(new Date(articleContent.pubDate));
-                } catch (e) {
-                    console.error(`Chyba při formátování data pro článek ${articleTitle}: ${e.message}`);
-                    formattedDate = 'Není uvedeno datum';
-                }
-            }
-            articleContent.pubDate = formattedDate;
 
             // Filtrování obsahu pro "Novinky ČR"
             if (type === 'cr') {
@@ -195,8 +165,8 @@ async function generateSummary(type) {
 
     // Seřazení článků podle data (od nejnovějších)
     allArticles.sort((a, b) => {
-        const dateA = new Date(a.pubDate === 'Není uvedeno datum' ? 0 : a.pubDate);
-        const dateB = new Date(b.pubDate === 'Není uvedeno datum' ? 0 : b.pubDate);
+        const dateA = new Date(a.pubDate);
+        const dateB = new Date(b.pubDate);
         return dateB - dateA;
     });
 
@@ -213,7 +183,6 @@ async function generateSummary(type) {
         ? 'nejnovějších zpráv z ČR'
         : 'nejnovějších zpráv ze světa';
 
-    // Upravený prompt pro zajištění překladu titulků do češtiny
     const prompt = `Vytvoř seznam ${summaryDescription} z textů. Pro každou zprávu uveď:
     - Krátký titulek (max. 10 slov, přelož do češtiny, pokud je původní titulek v jiném jazyce),
     - Shrnutí (4-5 vět, v češtině),
@@ -230,64 +199,84 @@ async function generateSummary(type) {
     return completion.choices[0].message.content.trim();
 }
 
-// Automatická aktualizace každou hodinu
-async function updateSummaries() {
-    console.log('Spouštím automatickou aktualizaci...');
-    try {
-        console.log('Aktualizuji Novinky ČR...');
-        const crSummary = await generateSummary('cr');
-        cache.cr.referat = crSummary;
-        cache.cr.lastUpdated = new Date();
-        console.log('Novinky ČR aktualizovány:', cache.cr);
-
-        console.log('Aktualizuji Novinky svět...');
-        const worldSummary = await generateSummary('world');
-        cache.world.referat = worldSummary;
-        cache.world.lastUpdated = new Date();
-        console.log('Novinky svět aktualizovány:', cache.world);
-    } catch (error) {
-        console.error(`Chyba při automatické aktualizaci: ${error.message}`);
-    }
-}
-
-// Spuštění první aktualizace při startu serveru
-updateSummaries();
-
-// Nastavení automatické aktualizace každou hodinu (60 minut = 60 * 60 * 1000 ms)
-setInterval(updateSummaries, 60 * 60 * 1000);
-
 // Endpoint pro získání sumarizace
 app.post('/api/summarize-news', async (req, res) => {
-    const { type, length } = req.body;
+    const { type, length, urls } = req.body;
 
     if (!type || !length) {
         return res.status(400).json({ error: 'Typ a délka jsou povinné' });
     }
 
     try {
-        if (type === 'cr' && cache.cr.referat) {
-            console.log('Načítám Novinky ČR z mezipaměti:', cache.cr);
-            return res.json({
-                referat: cache.cr.referat,
-                lastUpdated: cache.cr.lastUpdated ? formatDateTime(cache.cr.lastUpdated) : 'Není uvedeno'
+        if (type === 'homepage') {
+            if (!urls || !urls.length) {
+                return res.status(400).json({ error: 'URL adresy jsou povinné pro sumarizaci homepage' });
+            }
+
+            let allArticles = [];
+            for (const url of urls) {
+                console.log(`Načítám homepage: ${url}`);
+                try {
+                    const response = await fetch(url, {
+                        headers: { 'User-Agent': 'Mozilla/5.0' },
+                        timeout: 5000,
+                    });
+                    if (!response.ok) continue;
+
+                    const html = await response.text();
+                    const dom = new JSDOM(html, { url });
+                    const reader = new Readability(dom.window.document);
+                    const article = reader.parse();
+
+                    if (article && article.textContent) {
+                        allArticles.push({
+                            url: url,
+                            content: article.textContent,
+                            title: article.title || 'Bez názvu',
+                            pubDate: 'Není uvedeno datum',
+                            source: url
+                        });
+                    }
+                } catch (err) {
+                    console.error(`Chyba při načítání homepage ${url}: ${err.message}`);
+                    continue;
+                }
+            }
+
+            if (allArticles.length === 0) {
+                throw new Error('Žádné články k sumarizaci z homepage');
+            }
+
+            const combinedContent = allArticles
+                .map(a => `Z ${a.url} (Titulek: ${a.title}, Zdroj: ${a.source}, Datum: ${a.pubDate}):\n${a.content}`)
+                .join('\n\n');
+
+            const wordCount = 3000;
+            const maxTokens = Math.round(wordCount * 1.5);
+
+            const prompt = `Vytvoř seznam nejnovějších zpráv z homepage. Pro každou zprávu uveď:
+            - Krátký titulek (max. 10 slov, přelož do češtiny, pokud je původní titulek v jiném jazyce),
+            - Shrnutí (4-5 vět, v češtině),
+            - Informaci o zdroji a datu ve formátu: *(Zdroj: [zdroj], Datum: [datum])* (např. *(Zdroj: iRozhlas, Datum: 28. 3. 2025)*).
+            Sumarizuj striktně na základě poskytnutých dat, nevymýšlej si žádné informace. Pokud nějaká informace chybí, uveď to v shrnutí (např. "Datum vydání není uvedeno"). Seznam: 5-10 zpráv, délka ~${wordCount} slov. Texty: ${combinedContent.slice(0, 8000)}`;
+
+            const completion = await openai.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: [{ role: 'user', content: prompt }],
+                max_tokens: maxTokens,
+                temperature: 0.5,
             });
-        } else if (type === 'world' && cache.world.referat) {
-            console.log('Načítám Novinky svět z mezipaměti:', cache.world);
+
             return res.json({
-                referat: cache.world.referat,
-                lastUpdated: cache.world.lastUpdated ? formatDateTime(cache.world.lastUpdated) : 'Není uvedeno'
+                referat: completion.choices[0].message.content.trim(),
+                lastUpdated: formatDateTime(new Date())
             });
         }
 
-        console.log(`Mezipaměť pro ${type} je prázdná, generuji novou sumarizaci...`);
         const referat = await generateSummary(type);
-        cache[type].referat = referat;
-        cache[type].lastUpdated = new Date();
-
-        console.log(`Nová sumarizace pro ${type} uložena do mezipaměti:`, cache[type]);
         res.json({
             referat,
-            lastUpdated: formatDateTime(cache[type].lastUpdated)
+            lastUpdated: formatDateTime(new Date())
         });
     } catch (error) {
         console.error(`Chyba: ${error.message}`);
