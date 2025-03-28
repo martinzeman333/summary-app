@@ -602,7 +602,6 @@
             referatDiv.innerHTML = '';
             lastUpdatedDiv.innerHTML = '';
 
-            // Nejprve zkontrolujeme, zda je sumarizace v mezipaměti
             try {
                 const response = await fetch('/api/summarize-news', {
                     method: 'POST',
@@ -617,12 +616,9 @@
                 }
 
                 const data = await response.json();
-
-                // Pokud je odpověď rychlá (z mezipaměti), nezobrazíme progress bar
                 lastUpdatedDiv.innerHTML = `Poslední aktualizace: ${data.lastUpdated}`;
                 referatDiv.innerHTML = formatText(data.referat || 'Žádný referát nebyl vygenerován.');
 
-                // Pokud byla sumarizace generována (trvalo to déle), zobrazíme progress bar
                 if (response.headers.get('X-Generated-Now') === 'true') {
                     progressContainer.style.display = 'block';
                     progressBar.style.width = '0%';
@@ -658,7 +654,6 @@
             referatDiv.innerHTML = '';
             lastUpdatedDiv.innerHTML = '';
 
-            // Nejprve zkontrolujeme, zda je sumarizace v mezipaměti
             try {
                 const response = await fetch('/api/summarize-news', {
                     method: 'POST',
@@ -673,12 +668,9 @@
                 }
 
                 const data = await response.json();
-
-                // Pokud je odpověď rychlá (z mezipaměti), nezobrazíme progress bar
                 lastUpdatedDiv.innerHTML = `Poslední aktualizace: ${data.lastUpdated}`;
                 referatDiv.innerHTML = formatText(data.referat || 'Žádný referát nebyl vygenerován.');
 
-                // Pokud byla sumarizace generována (trvalo to déle), zobrazíme progress bar
                 if (response.headers.get('X-Generated-Now') === 'true') {
                     progressContainer.style.display = 'block';
                     progressBar.style.width = '0%';
