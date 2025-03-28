@@ -3,224 +3,124 @@ const fetch = require('node-fetch');
 const { JSDOM } = require('jsdom');
 const { Readability } = require('@mozilla/readability');
 const { OpenAI } = require('openai');
+const Parser = require('rss-parser');
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
-
-app.post('/api/summary', async (req, res) => {
-    const { url, length } = req.body;
-
-    if (!url) {
-        return res.status(400).json({ error: 'URL je povinná' });
-    }
-
-    if (!length) {
-        return res.status(400).json({ error: 'Délka je povinná' });
-    }
-
-    const lengthMap = {
-        'very-short': 100, // Nová možnost: Krátká (100 slov)
-        short: 300,        // Dříve "Krátká", nyní "Střední"
-        medium: 600,       // Dříve "Střední", nyní "Dlouhá"
-        long: 1000,        // Dříve "Dlouhá", nyní "Velmi dlouhá"
-    };
-
-    const wordCount = lengthMap[length] || 1000; // Výchozí hodnota je nyní 1000 slov (velmi dlouhá)
-    const maxTokens = Math.round(wordCount * 1.5);
-
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            },
-            timeout: 5000,
-        });
-
-        if (!response.ok) {
-            throw new Error(`Nepodařilo se načíst stránku: ${response.statusText}`);
-        }
-
-        const html = await response.text();
-        const dom = new JSDOM(html, { url });
-        const reader = new Readability(dom.window.document);
-        const article = reader.parse();
-
-        if (!article || !article.textContent) {
-            throw new Error('Nepodařilo se extrahovat obsah článku');
-        }
-
-        const textContent = article.textContent;
-
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini', // Pevně nastavený model
-            messages: [
-                {
-                    role: 'user',
-                    content: `Napiš referát v češtině na základě následujícího textu. Referát by měl být souvislý text o délce přibližně ${wordCount} slov, shrnující hlavní myšlenky článku. Na konci přidej 2-3 citace z textu (přímé věty nebo úryvky z článku, které podporují tvé tvrzení). Pokud text není v češtině, přelož citace do češtiny. Text: ${textContent.slice(0, 4000)}`
-                }
-            ],
-            max_tokens: maxTokens,
-            temperature: 0.7,
-        });
-
-        const referat = completion.choices[0].message.content.trim();
-        res.json({ referat });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const parser = new Parser();
 
 app.post('/api/summarize-news', async (req, res) => {
-    const { urls, length, type } = req.body;
+    const { type, length } = req.body;
 
-    if (!urls || !Array.isArray(urls) || urls.length === 0) {
-        return res.status(400).json({ error: 'Seznam URL je povinný' });
+    if (!type || !length) {
+        return res.status(400).json({ error: 'Typ a délka jsou povinné' });
     }
 
-    if (!length) {
-        return res.status(400).json({ error: 'Délka je povinná' });
-    }
-
-    if (!type) {
-        return res.status(400).json({ error: 'Typ sumarizace je povinný' });
-    }
-
-    // Pro speciální sumarizaci novinek nastavíme délku na 3000 slov
     const wordCount = 3000;
     const maxTokens = Math.round(wordCount * 1.5);
 
+    // Definice RSS zdrojů
+    let rssFeeds;
+    if (type === 'cr') {
+        rssFeeds = [
+            'https://www.irozhlas.cz/rss/irozhlas/section/zpravy-domov',
+            'https://www.seznamzprav.cz/zpravy.php?rubrika=domaci'
+        ];
+    } else if (type === 'world') {
+        rssFeeds = [
+            'https://www.irozhlas.cz/rss/irozhlas/section/zpravy-svet',
+            'https://www.seznamzprav.cz/zpravy.php?rubrika=zahranici',
+            'https://ct24.ceskatelevize.cz/rss',
+            'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
+            'https://feeds.skynews.com/feeds/rss/world.xml'
+        ];
+    } else {
+        return res.status(400).json({ error: 'Neplatný typ sumarizace' });
+    }
+
     try {
-        // Načteme obsah ze všech URL
         const articles = [];
+        const seenUrls = new Set();
+        const seenTitles = new Set();
 
-        for (const url of urls) {
-            console.log(`Načítám homepage: ${url}`);
-            let response;
+        // Načítání RSS feedů
+        for (const feedUrl of rssFeeds) {
+            console.log(`Načítám RSS: ${feedUrl}`);
+            let feed;
             try {
-                response = await fetch(url, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                    },
-                    timeout: 5000,
-                });
+                feed = await parser.parseURL(feedUrl);
             } catch (err) {
-                console.error(`Chyba při načítání homepage ${url}: ${err.message}`);
+                console.error(`Chyba RSS ${feedUrl}: ${err.message}`);
                 continue;
             }
 
-            if (!response.ok) {
-                console.error(`Nepodařilo se načíst stránku ${url}: ${response.statusText}`);
-                continue;
-            }
+            if (!feed.items || feed.items.length === 0) continue;
 
-            const html = await response.text();
-            const dom = new JSDOM(html, { url });
-            const document = dom.window.document;
+            // Omezení na 10 nejnovějších článků
+            for (const item of feed.items.slice(0, 10)) {
+                const articleUrl = item.link;
+                const articleTitle = item.title || 'Bez názvu';
 
-            // Extrahujeme odkazy na články z homepage
-            const links = Array.from(document.querySelectorAll('a'))
-                .map(a => {
-                    const href = a.href;
-                    // Filtrujeme pouze odkazy, které pravděpodobně vedou na články
-                    if (href && href.startsWith('http') && !href.includes('category') && !href.includes('tag') && !href.includes('author')) {
-                        return href;
-                    }
-                    return null;
-                })
-                .filter(link => link !== null);
+                // Kontrola duplicit
+                if (seenUrls.has(articleUrl) || seenTitles.has(articleTitle)) {
+                    console.log(`Duplicita: ${articleTitle}`);
+                    continue;
+                }
 
-            console.log(`Nalezeno ${links.length} odkazů na stránce ${url}`);
+                seenUrls.add(articleUrl);
+                seenTitles.add(articleTitle);
 
-            // Načteme obsah jednotlivých článků (max. 3 na stránku) paralelně
-            const articlePromises = links.slice(0, 3).map(async (articleUrl) => {
-                console.log(`Načítám článek: ${articleUrl}`);
+                // Načtení obsahu článku
                 try {
-                    const articleResponse = await fetch(articleUrl, {
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                        },
+                    const response = await fetch(articleUrl, {
+                        headers: { 'User-Agent': 'Mozilla/5.0' },
                         timeout: 5000,
                     });
+                    if (!response.ok) continue;
 
-                    if (!articleResponse.ok) {
-                        console.error(`Nepodařilo se načíst článek ${articleUrl}: ${articleResponse.statusText}`);
-                        return null;
-                    }
-
-                    const articleHtml = await articleResponse.text();
-                    const articleDom = new JSDOM(articleHtml, { url: articleUrl });
-                    const reader = new Readability(articleDom.window.document);
+                    const html = await response.text();
+                    const dom = new JSDOM(html, { url: articleUrl });
+                    const reader = new Readability(dom.window.document);
                     const article = reader.parse();
 
                     if (article && article.textContent) {
-                        console.log(`Úspěšně načten článek: ${articleUrl}, titulek: ${article.title}`);
-                        return {
+                        articles.push({
                             url: articleUrl,
                             content: article.textContent,
-                            title: article.title || 'Bez názvu'
-                        };
-                    } else {
-                        console.error(`Nepodařilo se extrahovat obsah z ${articleUrl}`);
-                        return null;
+                            title: article.title || articleTitle
+                        });
                     }
                 } catch (err) {
-                    console.error(`Chyba při načítání článku ${articleUrl}: ${err.message}`);
-                    return null;
+                    console.error(`Chyba článku ${articleUrl}: ${err.message}`);
                 }
-            });
-
-            // Počkáme na všechny články paralelně
-            const fetchedArticles = await Promise.all(articlePromises);
-            // Přidáme pouze úspěšně načtené články
-            fetchedArticles.forEach(article => {
-                if (article) {
-                    articles.push(article);
-                }
-            });
+            }
         }
 
         if (articles.length === 0) {
-            console.error('Nepodařilo se načíst žádné články z žádné stránky.');
-            return res.status(500).json({ error: 'Nepodařilo se načíst žádné články. Stránka může obsahovat dynamický obsah, který nelze načíst.' });
+            return res.status(500).json({ error: 'Žádné články k sumarizaci' });
         }
 
-        console.log(`Celkem načteno ${articles.length} článků.`);
+        // Kombinace obsahu pro sumarizaci
+        const combinedContent = articles
+            .map(a => `Z ${a.url} (Titulek: ${a.title}):\n${a.content}`)
+            .join('\n\n');
 
-        // Spojíme obsah všech článků do jednoho textu
-        const combinedContent = articles.map(article => `Obsah z ${article.url} (Titulek: ${article.title}):\n${article.content}`).join('\n\n');
+        const summaryDescription = type === 'cr'
+            ? 'nejnovějších zpráv z ČR'
+            : 'nejnovějších zpráv ze světa';
 
-        // Definujeme popis sumarizace podle typu
-        let summaryDescription;
-        if (type === 'cr') {
-            summaryDescription = 'nejnovějších a nejzajímavějších zpráv z České republiky';
-        } else if (type === 'world') {
-            summaryDescription = 'nejnovějších a nejzajímavějších zpráv ze světa';
-        } else if (type === 'homepage') {
-            summaryDescription = 'nejnovějších a nejzajímavějších zpráv z vybrané zpravodajské stránky';
-        } else {
-            throw new Error('Neplatný typ sumarizace');
-        }
-
-        // Vytvoříme prompt pro OpenAI (bez odkazů na původní články)
-        const prompt = `Prohledej následující texty z více zdrojů a vytvoř seznam ${summaryDescription}. Pro každou zprávu uveď:
+        const prompt = `Vytvoř seznam ${summaryDescription} z textů. Pro každou zprávu uveď:
         - Krátký titulek (max. 10 slov),
-        - Podrobné shrnutí (4-5 vět, zdůrazni podstatné informace, přelož do češtiny, pokud je text v jiném jazyce).
-        Seznam by měl obsahovat 5-10 nejzajímavějších zpráv, celkově o délce přibližně ${wordCount} slov. Nepoužívej nadpisy jako ### Závěr nebo ### Citace. Texty: ${combinedContent.slice(0, 8000)}`;
+        - Shrnutí (4-5 vět, v češtině).
+        Seznam: 5-10 zpráv, délka ~${wordCount} slov. Texty: ${combinedContent.slice(0, 8000)}`;
 
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini', // Pevně nastavený model
-            messages: [
-                {
-                    role: 'user',
-                    content: prompt
-                }
-            ],
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'user', content: prompt }],
             max_tokens: maxTokens,
             temperature: 0.7,
         });
@@ -228,12 +128,10 @@ app.post('/api/summarize-news', async (req, res) => {
         const referat = completion.choices[0].message.content.trim();
         res.json({ referat });
     } catch (error) {
-        console.error(`Chyba při zpracování požadavku: ${error.message}`);
+        console.error(`Chyba: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server běží na portu ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server běží na portu ${PORT}`));
