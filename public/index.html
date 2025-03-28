@@ -233,6 +233,12 @@
             font-weight: 500;
         }
 
+        #last-updated {
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
         #referat {
             white-space: pre-wrap;
             line-height: 1.7;
@@ -354,6 +360,10 @@
                 font-size: 1.3rem;
             }
 
+            #last-updated {
+                font-size: 0.8rem;
+            }
+
             #referat {
                 font-size: 0.9rem;
                 padding: 15px;
@@ -411,6 +421,7 @@
         </div>
         <div id="result">
             <h2>AI Sumarizace:</h2>
+            <div id="last-updated"></div>
             <div id="referat"></div>
             <div class="voice-settings">
                 <label for="voiceSelect">Hlas:</label>
@@ -482,6 +493,7 @@
             const urlInput = document.getElementById('urlInput').value;
             const lengthSelect = document.getElementById('lengthSelect').value;
             const referatDiv = document.getElementById('referat');
+            const lastUpdatedDiv = document.getElementById('last-updated');
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
 
@@ -491,6 +503,7 @@
             }
 
             referatDiv.innerHTML = '';
+            lastUpdatedDiv.innerHTML = '';
             progressContainer.style.display = 'block';
             progressBar.style.width = '0%';
 
@@ -537,10 +550,12 @@
             const urls = [homepageSelect];
             const length = 'long';
             const referatDiv = document.getElementById('referat');
+            const lastUpdatedDiv = document.getElementById('last-updated');
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
 
             referatDiv.innerHTML = '';
+            lastUpdatedDiv.innerHTML = '';
             progressContainer.style.display = 'block';
             progressBar.style.width = '0%';
 
@@ -586,10 +601,12 @@
             const length = 'long';
             const type = 'cr';
             const referatDiv = document.getElementById('referat');
+            const lastUpdatedDiv = document.getElementById('last-updated');
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
 
             referatDiv.innerHTML = '';
+            lastUpdatedDiv.innerHTML = '';
             progressContainer.style.display = 'block';
             progressBar.style.width = '0%';
 
@@ -618,6 +635,7 @@
                 }
 
                 const data = await response.json();
+                lastUpdatedDiv.innerHTML = `Poslední aktualizace: ${data.lastUpdated}`;
                 referatDiv.innerHTML = formatText(data.referat || 'Žádný referát nebyl vygenerován.');
             } catch (error) {
                 clearInterval(interval);
@@ -635,10 +653,12 @@
             const length = 'long';
             const type = 'world';
             const referatDiv = document.getElementById('referat');
+            const lastUpdatedDiv = document.getElementById('last-updated');
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
 
             referatDiv.innerHTML = '';
+            lastUpdatedDiv.innerHTML = '';
             progressContainer.style.display = 'block';
             progressBar.style.width = '0%';
 
@@ -667,6 +687,7 @@
                 }
 
                 const data = await response.json();
+                lastUpdatedDiv.innerHTML = `Poslední aktualizace: ${data.lastUpdated}`;
                 referatDiv.innerHTML = formatText(data.referat || 'Žádný referát nebyl vygenerován.');
             } catch (error) {
                 clearInterval(interval);
