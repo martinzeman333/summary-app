@@ -17,7 +17,7 @@
     "jsdom": "^24.0.0",
     "node-fetch": "^2.7.0",
     "openai": "^4.29.2",
-    "punycode": "^2.3.1", // Přidána náhrada za vestavěný punycode modul
+    "punycode": "^2.3.1",
     "rss-parser": "^3.13.0"
   }
 }
