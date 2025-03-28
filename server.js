@@ -14,32 +14,24 @@ const openai = new OpenAI({
 });
 
 app.post('/api/summary', async (req, res) => {
-    const { url, model, length } = req.body;
+    const { url, length } = req.body;
 
     if (!url) {
         return res.status(400).json({ error: 'URL je povinná' });
-    }
-
-    if (!model) {
-        return res.status(400).json({ error: 'Model je povinný' });
     }
 
     if (!length) {
         return res.status(400).json({ error: 'Délka je povinná' });
     }
 
-    const validModels = ['gpt-3.5-turbo', 'gpt-4o-mini'];
-    if (!validModels.includes(model)) {
-        return res.status(400).json({ error: 'Neplatný model' });
-    }
-
     const lengthMap = {
-        short: 300,
-        medium: 600,
-        long: 1000,
+        'very-short': 100, // Nová možnost: Krátká (100 slov)
+        short: 300,        // Dříve "Krátká", nyní "Střední"
+        medium: 600,       // Dříve "Střední", nyní "Dlouhá"
+        long: 1000,        // Dříve "Dlouhá", nyní "Velmi dlouhá"
     };
 
-    const wordCount = lengthMap[length] || 600;
+    const wordCount = lengthMap[length] || 1000; // Výchozí hodnota je nyní 1000 slov (velmi dlouhá)
     const maxTokens = Math.round(wordCount * 1.5);
 
     try {
@@ -47,7 +39,7 @@ app.post('/api/summary', async (req, res) => {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             },
-            timeout: 5000, // Zkráceno na 5 sekund
+            timeout: 5000,
         });
 
         if (!response.ok) {
@@ -66,7 +58,7 @@ app.post('/api/summary', async (req, res) => {
         const textContent = article.textContent;
 
         const completion = await openai.chat.completions.create({
-            model: model,
+            model: 'gpt-4o-mini', // Pevně nastavený model
             messages: [
                 {
                     role: 'user',
@@ -85,14 +77,10 @@ app.post('/api/summary', async (req, res) => {
 });
 
 app.post('/api/summarize-news', async (req, res) => {
-    const { urls, model, length, type } = req.body;
+    const { urls, length, type } = req.body;
 
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
         return res.status(400).json({ error: 'Seznam URL je povinný' });
-    }
-
-    if (!model) {
-        return res.status(400).json({ error: 'Model je povinný' });
     }
 
     if (!length) {
@@ -101,11 +89,6 @@ app.post('/api/summarize-news', async (req, res) => {
 
     if (!type) {
         return res.status(400).json({ error: 'Typ sumarizace je povinný' });
-    }
-
-    const validModels = ['gpt-3.5-turbo', 'gpt-4o-mini'];
-    if (!validModels.includes(model)) {
-        return res.status(400).json({ error: 'Neplatný model' });
     }
 
     // Pro speciální sumarizaci novinek nastavíme délku na 3000 slov
@@ -124,7 +107,7 @@ app.post('/api/summarize-news', async (req, res) => {
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                     },
-                    timeout: 5000, // Zkráceno na 5 sekund
+                    timeout: 5000,
                 });
             } catch (err) {
                 console.error(`Chyba při načítání homepage ${url}: ${err.message}`);
@@ -162,7 +145,7 @@ app.post('/api/summarize-news', async (req, res) => {
                         headers: {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                         },
-                        timeout: 5000, // Zkráceno na 5 sekund
+                        timeout: 5000,
                     });
 
                     if (!articleResponse.ok) {
@@ -231,7 +214,7 @@ app.post('/api/summarize-news', async (req, res) => {
         Seznam by měl obsahovat 5-10 nejzajímavějších zpráv, celkově o délce přibližně ${wordCount} slov. Nepoužívej nadpisy jako ### Závěr nebo ### Citace. Texty: ${combinedContent.slice(0, 8000)}`;
 
         const completion = await openai.chat.completions.create({
-            model: model,
+            model: 'gpt-4o-mini', // Pevně nastavený model
             messages: [
                 {
                     role: 'user',
