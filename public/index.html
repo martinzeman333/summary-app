@@ -570,12 +570,8 @@
         }
 
         async function summarizeCRNews() {
-            const urls = [
-                'https://www.irozhlas.cz/zpravy-domov',
-                'https://www.seznamzpravy.cz/sekce/domaci-13',
-                'https://ct24.ceskatelevize.cz/rubrika/domaci-5'
-            ];
-            const length = 'long'; // Použijeme "long", ale upravíme délku na 3000 slov na serveru
+            const length = 'long';
+            const type = 'cr';
             const referatDiv = document.getElementById('referat');
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
@@ -598,7 +594,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ urls, length, type: 'cr' }),
+                    body: JSON.stringify({ type, length }),
                 });
 
                 clearInterval(interval);
@@ -623,12 +619,8 @@
         }
 
         async function summarizeWorldNews() {
-            const urls = [
-                'https://ct24.ceskatelevize.cz/rubrika/svet-16',
-                'https://www.irozhlas.cz/zpravy-svet',
-                'https://www.seznamzpravy.cz/sekce/zahranicni-11'
-            ];
-            const length = 'long'; // Použijeme "long", ale upravíme délku na 3000 slov na serveru
+            const length = 'long';
+            const type = 'world';
             const referatDiv = document.getElementById('referat');
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
@@ -651,7 +643,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ urls, length, type: 'world' }),
+                    body: JSON.stringify({ type, length }),
                 });
 
                 clearInterval(interval);
