@@ -23,47 +23,48 @@ app.post('/api/summarize-news', async (req, res) => {
     const wordCount = 3000;
     const maxTokens = Math.round(wordCount * 1.5);
 
-    // Definice RSS zdrojů
+    // Definice RSS zdrojů s názvy
     let rssFeeds;
     if (type === 'cr') {
         rssFeeds = [
-            'https://www.irozhlas.cz/rss/irozhlas/section/zpravy-domov',
-            'https://www.seznamzprav.cz/zpravy.php?rubrika=domaci'
+            { url: 'https://www.irozhlas.cz/rss/irozhlas/section/zpravy-domov', name: 'iRozhlas' },
+            { url: 'https://www.seznamzprav.cz/zpravy.php?rubrika=domaci', name: 'Seznam Zprávy' }
         ];
     } else if (type === 'world') {
         rssFeeds = [
-            'https://www.irozhlas.cz/rss/irozhlas/section/zpravy-svet',
-            'https://www.seznamzprav.cz/zpravy.php?rubrika=zahranici',
-            'https://ct24.ceskatelevize.cz/rss',
-            'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
-            'https://feeds.skynews.com/feeds/rss/world.xml'
+            { url: 'https://www.irozhlas.cz/rss/irozhlas/section/zpravy-svet', name: 'iRozhlas' },
+            { url: 'https://www.seznamzprav.cz/zpravy.php?rubrika=zahranici', name: 'Seznam Zprávy' },
+            { url: 'https://ct24.ceskatelevize.cz/rss', name: 'ČT24' },
+            { url: 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml', name: 'New York Times' },
+            { url: 'https://feeds.skynews.com/feeds/rss/world.xml', name: 'Sky News' }
         ];
     } else {
         return res.status(400).json({ error: 'Neplatný typ sumarizace' });
     }
 
     try {
-        const articles = [];
+        let allArticles = [];
         const seenUrls = new Set();
         const seenTitles = new Set();
 
         // Načítání RSS feedů
-        for (const feedUrl of rssFeeds) {
-            console.log(`Načítám RSS: ${feedUrl}`);
-            let feed;
+        for (const feed of rssFeeds) {
+            console.log(`Načítám RSS: ${feed.url}`);
+            let feedData;
             try {
-                feed = await parser.parseURL(feedUrl);
+                feedData = await parser.parseURL(feed.url);
             } catch (err) {
-                console.error(`Chyba RSS ${feedUrl}: ${err.message}`);
+                console.error(`Chyba RSS ${feed.url}: ${err.message}`);
                 continue;
             }
 
-            if (!feed.items || feed.items.length === 0) continue;
+            if (!feedData.items || feedData.items.length === 0) continue;
 
-            // Omezení na 10 nejnovějších článků
-            for (const item of feed.items.slice(0, 10)) {
+            // Přidání článků s datem a zdrojem
+            for (const item of feedData.items.slice(0, 10)) {
                 const articleUrl = item.link;
                 const articleTitle = item.title || 'Bez názvu';
+                const pubDate = item.pubDate || item.isoDate || 'Není uvedeno datum';
 
                 // Kontrola duplicit
                 if (seenUrls.has(articleUrl) || seenTitles.has(articleTitle)) {
@@ -88,10 +89,12 @@ app.post('/api/summarize-news', async (req, res) => {
                     const article = reader.parse();
 
                     if (article && article.textContent) {
-                        articles.push({
+                        allArticles.push({
                             url: articleUrl,
                             content: article.textContent,
-                            title: article.title || articleTitle
+                            title: article.title || articleTitle,
+                            pubDate: pubDate,
+                            source: feed.name
                         });
                     }
                 } catch (err) {
@@ -100,13 +103,20 @@ app.post('/api/summarize-news', async (req, res) => {
             }
         }
 
-        if (articles.length === 0) {
+        // Seřazení článků podle data (od nejnovějších)
+        allArticles.sort((a, b) => {
+            const dateA = new Date(a.pubDate);
+            const dateB = new Date(b.pubDate);
+            return dateB - dateA; // Od nejnovějšího po nejstarší
+        });
+
+        if (allArticles.length === 0) {
             return res.status(500).json({ error: 'Žádné články k sumarizaci' });
         }
 
         // Kombinace obsahu pro sumarizaci
-        const combinedContent = articles
-            .map(a => `Z ${a.url} (Titulek: ${a.title}):\n${a.content}`)
+        const combinedContent = allArticles
+            .map(a => `Z ${a.url} (Titulek: ${a.title}, Zdroj: ${a.source}, Datum: ${a.pubDate}):\n${a.content}`)
             .join('\n\n');
 
         const summaryDescription = type === 'cr'
@@ -115,14 +125,15 @@ app.post('/api/summarize-news', async (req, res) => {
 
         const prompt = `Vytvoř seznam ${summaryDescription} z textů. Pro každou zprávu uveď:
         - Krátký titulek (max. 10 slov),
-        - Shrnutí (4-5 vět, v češtině).
-        Seznam: 5-10 zpráv, délka ~${wordCount} slov. Texty: ${combinedContent.slice(0, 8000)}`;
+        - Shrnutí (4-5 vět, v češtině),
+        - Informaci o zdroji a datu ve formátu: *(Zdroj: [zdroj], Datum: [datum])* (např. *(Zdroj: iRozhlas, Datum: 28. 3. 2025)*).
+        Sumarizuj striktně na základě poskytnutých dat, nevymýšlej si žádné informace. Pokud nějaká informace chybí, uveď to v shrnutí (např. "Datum vydání není uvedeno"). Seznam: 5-10 zpráv, délka ~${wordCount} slov. Texty: ${combinedContent.slice(0, 8000)}`;
 
         const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [{ role: 'user', content: prompt }],
             max_tokens: maxTokens,
-            temperature: 0.7,
+            temperature: 0.5, // Snížíme teplotu, aby model méně "kreativně" vymýšlel
         });
 
         const referat = completion.choices[0].message.content.trim();
