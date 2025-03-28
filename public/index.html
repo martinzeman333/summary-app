@@ -578,6 +578,7 @@
                 }
 
                 const data = await response.json();
+                lastUpdatedDiv.innerHTML = `Poslední aktualizace: ${data.lastUpdated}`;
                 referatDiv.innerHTML = formatText(data.referat || 'Žádný referát nebyl vygenerován.');
             } catch (error) {
                 clearInterval(interval);
@@ -601,6 +602,16 @@
 
             referatDiv.innerHTML = '';
             lastUpdatedDiv.innerHTML = '';
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                if (progress <= 90) {
+                    progressBar.style.width = `${progress}%`;
+                }
+            }, 100);
 
             try {
                 const response = await fetch('/api/summarize-news', {
@@ -611,6 +622,9 @@
                     body: JSON.stringify({ type, length }),
                 });
 
+                clearInterval(interval);
+                progressBar.style.width = '100%';
+
                 if (!response.ok) {
                     throw new Error('Chyba při zpracování požadavku');
                 }
@@ -618,28 +632,15 @@
                 const data = await response.json();
                 lastUpdatedDiv.innerHTML = `Poslední aktualizace: ${data.lastUpdated}`;
                 referatDiv.innerHTML = formatText(data.referat || 'Žádný referát nebyl vygenerován.');
-
-                if (response.headers.get('X-Generated-Now') === 'true') {
-                    progressContainer.style.display = 'block';
-                    progressBar.style.width = '0%';
-
-                    let progress = 0;
-                    const interval = setInterval(() => {
-                        progress += 5;
-                        if (progress <= 90) {
-                            progressBar.style.width = `${progress}%`;
-                        }
-                    }, 100);
-
-                    clearInterval(interval);
-                    progressBar.style.width = '100%';
-                    setTimeout(() => {
-                        progressContainer.style.display = 'none';
-                    }, 500);
-                }
             } catch (error) {
+                clearInterval(interval);
+                progressBar.style.width = '0%';
                 alert(error.message);
                 referatDiv.innerHTML = '';
+            } finally {
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                }, 500);
             }
         }
 
@@ -653,6 +654,16 @@
 
             referatDiv.innerHTML = '';
             lastUpdatedDiv.innerHTML = '';
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                if (progress <= 90) {
+                    progressBar.style.width = `${progress}%`;
+                }
+            }, 100);
 
             try {
                 const response = await fetch('/api/summarize-news', {
@@ -663,6 +674,9 @@
                     body: JSON.stringify({ type, length }),
                 });
 
+                clearInterval(interval);
+                progressBar.style.width = '100%';
+
                 if (!response.ok) {
                     throw new Error('Chyba při zpracování požadavku');
                 }
@@ -670,28 +684,15 @@
                 const data = await response.json();
                 lastUpdatedDiv.innerHTML = `Poslední aktualizace: ${data.lastUpdated}`;
                 referatDiv.innerHTML = formatText(data.referat || 'Žádný referát nebyl vygenerován.');
-
-                if (response.headers.get('X-Generated-Now') === 'true') {
-                    progressContainer.style.display = 'block';
-                    progressBar.style.width = '0%';
-
-                    let progress = 0;
-                    const interval = setInterval(() => {
-                        progress += 5;
-                        if (progress <= 90) {
-                            progressBar.style.width = `${progress}%`;
-                        }
-                    }, 100);
-
-                    clearInterval(interval);
-                    progressBar.style.width = '100%';
-                    setTimeout(() => {
-                        progressContainer.style.display = 'none';
-                    }, 500);
-                }
             } catch (error) {
+                clearInterval(interval);
+                progressBar.style.width = '0%';
                 alert(error.message);
                 referatDiv.innerHTML = '';
+            } finally {
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                }, 500);
             }
         }
 
@@ -749,7 +750,7 @@
                 })
                 .then(() => console.log('Sdílení úspěšné'))
                 .catch((error) => console.log('Chyba při sdílení:', error));
-            } else {
+ W           } else {
                 alert('Sdílení není v tomto prohlížeči podporováno. Zkopírujte text ručně.');
             }
         }
