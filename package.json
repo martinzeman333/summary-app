@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node --no-deprecation server.js"
   },
   "keywords": [],
   "author": "",
@@ -17,6 +17,7 @@
     "jsdom": "^24.0.0",
     "node-fetch": "^2.7.0",
     "openai": "^4.29.2",
+    "punycode": "^2.3.1", // Přidána náhrada za vestavěný punycode modul
     "rss-parser": "^3.13.0"
   }
 }
