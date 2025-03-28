@@ -373,14 +373,11 @@
         <h1>Summary App</h1>
         <input type="text" id="urlInput" placeholder="Zadejte URL článku">
         <div class="input-group">
-            <select id="modelSelect">
-                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                <option value="gpt-4o-mini">GPT-4o Mini</option>
-            </select>
             <select id="lengthSelect">
-                <option value="short">Krátká (~300 slov)</option>
-                <option value="medium" selected>Střední (~600 slov)</option>
-                <option value="long">Dlouhá (~1000 slov)</option>
+                <option value="very-short">Krátká (~100 slov)</option>
+                <option value="short">Střední (~300 slov)</option>
+                <option value="medium">Dlouhá (~600 slov)</option>
+                <option value="long" selected>Velmi dlouhá (~1000 slov)</option>
             </select>
             <button onclick="generateSummary()">Proveď sumarizaci článku</button>
         </div>
@@ -394,6 +391,11 @@
                 <option value="https://www.bbc.com/">BBC</option>
                 <option value="https://www.welt.de/">Die Welt</option>
                 <option value="https://tass.com/">Tass</option>
+                <option value="https://www.seznamzpravy.cz/">Seznam Zprávy</option>
+                <option value="https://www.irozhlas.cz/">iRozhlas</option>
+                <option value="https://ct24.ceskatelevize.cz/">ČT24</option>
+                <option value="https://www.aljazeera.com/">Al Jazeera</option>
+                <option value="https://www.bloomberg.com/europe">Bloomberg</option>
             </select>
             <button onclick="summarizeHomepage()"><i class="fas fa-globe"></i> Sumarizuj homepage</button>
         </div>
@@ -465,7 +467,6 @@
 
         async function generateSummary() {
             const urlInput = document.getElementById('urlInput').value;
-            const modelSelect = document.getElementById('modelSelect').value;
             const lengthSelect = document.getElementById('lengthSelect').value;
             const referatDiv = document.getElementById('referat');
             const progressContainer = document.getElementById('progress-container');
@@ -494,7 +495,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ url: urlInput, model: modelSelect, length: lengthSelect }),
+                    body: JSON.stringify({ url: urlInput, length: lengthSelect }),
                 });
 
                 clearInterval(interval);
@@ -521,7 +522,6 @@
         async function summarizeHomepage() {
             const homepageSelect = document.getElementById('homepageSelect').value;
             const urls = [homepageSelect];
-            const model = 'gpt-4o-mini';
             const length = 'long'; // Použijeme "long", ale upravíme délku na 3000 slov na serveru
             const referatDiv = document.getElementById('referat');
             const progressContainer = document.getElementById('progress-container');
@@ -545,7 +545,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ urls, model, length, type: 'homepage' }),
+                    body: JSON.stringify({ urls, length, type: 'homepage' }),
                 });
 
                 clearInterval(interval);
@@ -575,7 +575,6 @@
                 'https://www.seznamzpravy.cz/sekce/domaci-13',
                 'https://ct24.ceskatelevize.cz/rubrika/domaci-5'
             ];
-            const model = 'gpt-4o-mini';
             const length = 'long'; // Použijeme "long", ale upravíme délku na 3000 slov na serveru
             const referatDiv = document.getElementById('referat');
             const progressContainer = document.getElementById('progress-container');
@@ -599,7 +598,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ urls, model, length, type: 'cr' }),
+                    body: JSON.stringify({ urls, length, type: 'cr' }),
                 });
 
                 clearInterval(interval);
@@ -629,7 +628,6 @@
                 'https://www.irozhlas.cz/zpravy-svet',
                 'https://www.seznamzpravy.cz/sekce/zahranicni-11'
             ];
-            const model = 'gpt-4o-mini';
             const length = 'long'; // Použijeme "long", ale upravíme délku na 3000 slov na serveru
             const referatDiv = document.getElementById('referat');
             const progressContainer = document.getElementById('progress-container');
@@ -653,7 +651,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ urls, model, length, type: 'world' }),
+                    body: JSON.stringify({ urls, length, type: 'world' }),
                 });
 
                 clearInterval(interval);
