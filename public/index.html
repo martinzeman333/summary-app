@@ -9,12 +9,228 @@
     <!-- Font Awesome pro ikony -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Předchozí styly zůstávají nezměněny, přidáváme nový styl pro zdroj a datum */
-        .source-info {
-            font-size: 0.8rem;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            padding: 30px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ffffff;
+            margin-bottom: 40px;
+            font-size: 2.2rem;
+            font-weight: 600;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .container {
+            background-color: #2a2a2a;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+            width: 100%;
+            max-width: 650px;
+            transition: transform 0.3s ease;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 20px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #333;
+            color: #e0e0e0;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]::placeholder {
             color: #888;
-            font-style: italic;
-            margin-top: 5px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #1e90ff;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(90deg, #1e90ff, #00c4ff);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        button:hover {
+            background: linear-gradient(90deg, #1c86ee, #00b7ff);
+            transform: scale(1.02);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .homepage-selector {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .homepage-selector select {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #333;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .homepage-selector select:focus {
+            outline: none;
+            border-color: #1e90ff;
+        }
+
+        .homepage-selector button {
+            flex: 1;
+            padding: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: linear-gradient(90deg, #388e3c, #4caf50);
+        }
+
+        .homepage-selector button:hover {
+            background: linear-gradient(90deg, #2e7d32, #43a047);
+            transform: scale(1.02);
+        }
+
+        .news-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .news-buttons button {
+            flex: 1;
+            padding: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        #news-cr-button {
+            background: linear-gradient(90deg, #0d47a1, #1976d2); /* Tmavě modrá pro Novinky ČR */
+        }
+
+        #news-cr-button:hover {
+            background: linear-gradient(90deg, #0b3d91, #1565c0);
+            transform: scale(1.02);
+        }
+
+        #news-world-button {
+            background: linear-gradient(90deg, #1565c0, #2196f3); /* O něco světlejší tmavě modrá pro Novinky Svět */
+        }
+
+        #news-world-button:hover {
+            background: linear-gradient(90deg, #0d47a1, #1e88e5);
+            transform: scale(1.02);
+        }
+
+        select {
+            flex: 1;
+            padding: 14px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            background-color: #333;
+            color: #e0e0e0;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #1e90ff;
+        }
+
+        .voice-settings {
+            display: flex;
+            gap: 8px; /* Menší mezera mezi prvky */
+            margin-top: 8px;
+            margin-bottom: 15px;
+            align-items: center; /* Vertikální zarovnání prvků */
+        }
+
+        .voice-settings label {
+            color: #d0d0d0;
+            font-size: 0.8rem; /* Menší písmo */
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap; /* Zabrání zalomení textu v labelu */
+        }
+
+        .voice-settings select,
+        .voice-settings input[type="range"] {
+            flex: 0 1 100px; /* Ještě menší základní šířka */
+            max-width: 120px; /* Ještě menší maximální šířka */
+            padding: 4px; /* Menší padding */
+            border: 1px solid #444;
+            border-radius: 6px; /* Menší zaoblení */
+            background-color: #333;
+            color: #e0e0e0;
+            font-size: 0.8rem; /* Menší písmo */
+            cursor: pointer;
+        }
+
+        .voice-settings input[type="range"] {
+            padding: 0;
+            height: 16px; /* Menší výška posuvníku */
+        }
+
+        #result {
+            margin-top: 25px;
+        }
+
+        #result h2 {
+            color: #1e90ff;
+            margin-bottom: 15px;
+            font-size: 1.6rem;
+            font-weight: 500;
         }
 
         #referat {
@@ -38,11 +254,128 @@
             color: #00c4ff;
         }
 
-        /* Zbytek stylů zůstává nezměněn */
+        .source-info {
+            font-size: 0.8rem;
+            color: #888;
+            font-style: italic;
+            margin-top: 5px;
+        }
+
+        #progress-container {
+            display: none;
+            width: 100%;
+            background-color: #444;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            margin-top: 25px;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 12px;
+            background: linear-gradient(90deg, #2e7d32, #4caf50);
+            transition: width 0.3s ease;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .action-buttons button {
+            flex: 1;
+            padding: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        #read-button {
+            background: linear-gradient(90deg, #ff9800, #ffb300);
+        }
+
+        #read-button:hover {
+            background: linear-gradient(90deg, #fb8c00, #ffa700);
+            transform: scale(1.02);
+        }
+
+        #share-button {
+            background: linear-gradient(90deg, #4caf50, #66bb6a);
+        }
+
+        #share-button:hover {
+            background: linear-gradient(90deg, #43a047, #5cb860);
+            transform: scale(1.02);
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8rem;
+                margin-top: 20px;
+                margin-bottom: 30px;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            input[type="text"],
+            button,
+            select {
+                font-size: 0.9rem;
+                padding: 12px;
+            }
+
+            .input-group,
+            .homepage-selector,
+            .news-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .voice-settings {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .voice-settings select,
+            .voice-settings input[type="range"] {
+                flex: 1 1 100%; /* Na mobilu zabere celou šířku */
+                max-width: 100%;
+            }
+
+            #result h2 {
+                font-size: 1.3rem;
+            }
+
+            #referat {
+                font-size: 0.9rem;
+                padding: 15px;
+            }
+
+            #progress-container {
+                margin-top: 20px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .action-buttons button {
+                font-size: 0.8rem;
+                padding: 10px;
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- HTML struktura zůstává stejná jako v předchozí verzi -->
     <div class="container">
         <h1>Summary App</h1>
         <input type="text" id="urlInput" placeholder="Zadejte URL článku">
